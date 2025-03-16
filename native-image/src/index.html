@@ -1,0 +1,348 @@
+<html lang="en" data-theme="dark">
+<head>
+    <!-- Add these new meta tags for improved performance -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#1A1A1D">
+    <meta name="color-scheme" content="dark light">
+    <title>AI Chat Interface</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="markdown.css">
+    <link rel="stylesheet" href="history.css">
+    <link rel="stylesheet" href="examples.css">
+    <link rel="stylesheet" href="gif-creator.css">
+    <link rel="stylesheet" href="image-viewer.css">
+    <link rel="stylesheet" href="profile-card.css">
+    <link rel="stylesheet" href="tactile-interface.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.7.0/styles/atom-one-dark.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked@4.3.0/marked.min.js"></script>
+    <script type="importmap">
+    {
+      "imports": {
+        "@google/generative-ai": "https://esm.run/@google/generative-ai",
+        "marked": "https://esm.run/marked@4.3.0",
+        "highlight.js": "https://esm.run/highlight.js@11.7.0",
+        "dompurify": "https://esm.run/dompurify@3.0.5"
+      }
+    }
+    </script>
+    <script>
+        // Apply saved theme immediately to prevent flash of wrong theme
+        const savedTheme = localStorage.getItem('theme') || 'dark';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        
+        // Apply saved tactile mode immediately
+        const tactileMode = localStorage.getItem('tactileMode') === 'true';
+        document.documentElement.setAttribute('data-tactile', tactileMode);
+        
+        // Set theme-color meta tag based on current theme
+        const metaThemeColor = document.querySelector('meta[name=theme-color]');
+        if (metaThemeColor) {
+            metaThemeColor.setAttribute('content', savedTheme === 'dark' ? '#1A1A1D' : '#F2F3F5');
+        }
+    </script>
+</head>
+<body>
+    <div class="app-container">
+        <header>
+            <div class="header-left">
+                <button id="history-toggle-btn" class="history-toggle-btn" aria-label="Chat history">
+                    <span class="button-effect"></span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                </button>
+                <button id="new-chat-btn" class="new-chat-btn" aria-label="New chat">
+                    <span class="button-effect"></span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Regular profile card for desktop -->
+            <div class="profile-card">
+                <div class="profile-info">
+                    <div class="profile-name">Built by thaakeno</div>
+                </div>
+                <div class="profile-links">
+                    <a href="https://github.com/thaakeno" target="_blank" rel="noopener noreferrer" class="profile-link github-link" title="GitHub">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
+                    </svg>
+                </a>
+                    <a href="https://x.com/thaakeno" target="_blank" rel="noopener noreferrer" class="profile-link x-link" title="X (Twitter)">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 512 512" width="24" height="24">
+                            <path d="M389.2 48h70.6L305.6 224.2 487 464H345L233.7 318.6 106.5 464H35.8L200.7 275.5 26.8 48H172.4L272.9 180.9 389.2 48zM364.4 421.8h39.1L151.1 88h-42L364.4 421.8z" />
+                        </svg>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Mobile profile button -->
+            <div class="profile-button" aria-label="Profile">
+                <img src="syndicate.png" alt="Profile" />
+            </div>
+
+            <div class="header-buttons">
+                <button id="theme-toggle" class="theme-button" aria-label="Toggle theme">
+                    <span class="button-effect"></span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon-dark">
+                        <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>
+                    </svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon-light" style="display: none;">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <path d="M12 1v2"></path>
+                        <path d="M12 21v2"></path>
+                        <path d="M4.22 4.22l1.42 1.42"></path>
+                        <path d="M18.36 18.36l1.42 1.42"></path>
+                        <path d="M1 12h2"></path>
+                        <path d="M21 12h2"></path>
+                        <path d="M4.22 19.78l1.42-1.42"></path>
+                        <path d="M18.36 5.64l1.42-1.42"></path>
+                    </svg>
+                </button>
+                <button id="settings-button" class="settings-button" aria-label="Settings">
+                    <span class="button-effect"></span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15-.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
+                        <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                </button>
+            </div>
+        </header>
+        
+        <div class="chat-container">
+            <div class="system-prompt-container">
+                <button class="system-prompt-button" id="system-instructions-btn" aria-label="Edit system prompt">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 20h9"></path>
+                        <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                    </svg>
+                    System Prompt
+                </button>
+            </div>
+            <div id="messages-container">
+                <div class="message system-message animate-in">
+                    <div class="system-message-inner">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="system-icon">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polygon points="10 8 16 12 10 16 10 8"></polygon>
+                        </svg>
+                        <div>
+                            Hello! I'm an AI assistant. You can ask me to generate text responses or create images using Gemini 2.0. Just type your message below.
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="debug-panel" class="debug-panel" style="display: none;">
+                <div class="debug-header">
+                    <h3>Debug Console</h3>
+                    <button id="debug-collapse" aria-label="Collapse debug panel">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="18 15 12 9 6 15"></polyline>
+                        </svg>
+                    </button>
+                </div>
+                <div id="debug-content"></div>
+                <div class="debug-actions">
+                    <button id="clear-debug">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M3 6h18"></path>
+                            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                        </svg>
+                        Clear Console
+                    </button>
+                    <div class="debug-status">Debug Active</div>
+                </div>
+            </div>
+            
+            <div class="input-container">
+                <div class="input-wrapper">
+                    <button id="image-upload-button" class="upload-button" aria-label="Upload image">
+                        <span class="button-effect"></span>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                            <polyline points="21 15 16 10 5 21"></polyline>
+                        </svg>
+                    </button>
+                    <input type="file" id="image-input" accept="image/*" style="display: none;">
+                    <textarea id="user-input" placeholder="Type your message here..."></textarea>
+                    <button id="send-button" aria-label="Send message">
+                        <span class="button-effect"></span>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="m22 2-7 20-4-9-9-4Z"></path>
+                            <path d="M22 2 11 13"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div id="settings-modal" class="modal">
+            <div class="modal-content">
+                <button class="close-button" aria-label="Close settings">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+                <h2>Settings</h2>
+                <div class="setting-group">
+                    <label for="api-key">Gemini API Key:</label>
+                    <div class="input-with-icon">
+                        <input type="password" id="api-key" placeholder="Enter your Gemini API Key">
+                        <button id="toggle-api-visibility" aria-label="Toggle API key visibility">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="eye-icon">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                        </button>
+                    </div>
+                    <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" class="api-key-link">
+                        Get your API key here for free
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                            <polyline points="15 3 21 3 21 9"></polyline>
+                            <line x1="10" y1="14" x2="21" y2="3"></line>
+                        </svg>
+                    </a>
+                    <button id="save-api-key">Save API Key</button>
+                </div>
+                <div class="setting-group">
+                    <label for="temperature">Temperature: <span id="temperature-value">1.0</span></label>
+                    <div class="slider-container">
+                        <input type="range" id="temperature" min="0" max="1" step="0.1" value="1">
+                        <div class="slider-labels">
+                            <span>More Focused</span>
+                            <span>More Creative</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="setting-group">
+                    <label for="max-tokens">Max Output Tokens: <span id="max-tokens-value">8192</span></label>
+                    <div class="slider-container">
+                        <input type="range" id="max-tokens" min="1000" max="8192" step="100" value="8192">
+                        <div class="slider-labels">
+                            <span>Shorter</span>
+                            <span>Longer</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="setting-group toggle-group">
+                    <label for="debug-toggle">Debug Mode</label>
+                    <label class="switch">
+                        <input type="checkbox" id="debug-toggle">
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+                <div class="setting-group">
+                    <label for="theme-selector">Themes</label>
+                    <div class="theme-selector-container">
+                        <select id="theme-selector" class="theme-select">
+                            <option value="mint">Mint (Default)</option>
+                            <option value="onyx">Onyx</option>
+                        </select>
+                        <div class="theme-preview">
+                            <div class="theme-preview-mint">
+                                <span class="preview-dot mint-primary"></span>
+                                <span class="preview-dot mint-secondary"></span>
+                            </div>
+                            <div class="theme-preview-onyx">
+                                <span class="preview-dot onyx-primary"></span>
+                                <span class="preview-dot onyx-secondary"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="system-instructions-modal" class="modal">
+            <div class="modal-content system-instructions-modal-content">
+                <button class="close-button" id="close-system-instructions" aria-label="Close system instructions">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+                <h2>System Instructions</h2>
+                <p class="system-instructions-description">
+                    Set custom instructions for the AI to follow. These instructions will apply to all your conversations.
+                </p>
+                <div class="setting-group">
+                    <textarea id="system-instructions-input" class="system-instructions-textarea" placeholder="Enter custom instructions for the AI..."></textarea>
+                </div>
+                <div class="setting-group">
+                    <button id="reset-system-instructions" class="reset-button">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 12a9 9 0 0 1-9 9"></path>
+                            <path d="M3 12a9 9 0 0 1 9-9"></path>
+                            <path d="M21 12H3"></path>
+                            <path d="M12 3v18"></path>
+                        </svg>
+                        Reset to Default
+                    </button>
+                    <button id="save-system-instructions" class="save-button">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                            <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                            <polyline points="7 3 7 8 15 8"></polyline>
+                        </svg>
+                        Save Instructions
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="profile-modal">
+            <div class="profile-modal-content">
+                <button class="profile-modal-close">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+                <div class="profile-modal-header">
+                    <div class="profile-modal-avatar">
+                        <img src="user.png" alt="thaakeno" />
+                    </div>
+                    <div class="profile-modal-info">
+                        <div class="profile-modal-name">thaakeno</div>
+                        <div class="profile-modal-bio">Developer and designer passionate about creating intuitive interfaces.</div>
+                    </div>
+                </div>
+                <div class="profile-modal-links">
+                    <a href="https://github.com/thaakeno" target="_blank" rel="noopener noreferrer" class="profile-modal-link github-link" title="GitHub">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
+                    </svg>
+                </a>
+                    <a href="https://x.com/thaakeno" target="_blank" rel="noopener noreferrer" class="profile-modal-link x-link" title="X (Twitter)">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 512 512" width="24" height="24">
+                            <path d="M389.2 48h70.6L305.6 224.2 487 464H345L233.7 318.6 106.5 464H35.8L200.7 275.5 26.8 48H172.4L272.9 180.9 389.2 48zM364.4 421.8h39.1L151.1 88h-42L364.4 421.8z" />
+                        </svg>
+                    </a>
+                    <a href="https://websim.ai/@thaakeno" target="_blank" rel="noopener noreferrer" class="profile-modal-link websim-link" title="WebSim Profile">
+                        <img src="websim.png" alt="WebSim" />
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <script src="markdown-renderer.js"></script>
+        <script src="history.js"></script>
+        <script src="examples.js"></script>
+        <script src="gif-creator.js"></script>
+        <script src="image-viewer.js"></script>
+        <script src="app.js" type="module"></script>
+        <script src="profile-card.js"></script>
+    </div>
+</body>
+</html>

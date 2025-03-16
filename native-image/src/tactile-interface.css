@@ -1,0 +1,1277 @@
+/* Tactile Interface Styling */
+:root {
+    /* Tactile theme variables */
+    --tactile-shadow-out: -5px -5px 10px rgba(255, 255, 255, 0.1),
+                          5px 5px 10px rgba(0, 0, 0, 0.25),
+                          inset 0 1px 1px rgba(255, 255, 255, 0.05);
+    --tactile-shadow-hover: -2px -2px 8px rgba(255, 255, 255, 0.2),
+                            2px 5px 12px rgba(0, 0, 0, 0.4),
+                            inset -2px -2px 5px rgba(255, 255, 255, 0.1),
+                            inset 2px 2px 4px rgba(0, 0, 0, 0.3);
+    --tactile-shadow-in: inset -3px -3px 7px rgba(255, 255, 255, 0.05),
+                         inset 3px 3px 6px rgba(0, 0, 0, 0.4);
+    --input-radius: 16px;
+}
+
+[data-theme="light"] {
+    /* Tactile theme variables for light mode */
+    --tactile-shadow-out: -5px -5px 10px rgba(255, 255, 255, 0.7),
+                          5px 5px 10px rgba(0, 0, 0, 0.1),
+                          inset 0 1px 1px rgba(255, 255, 255, 0.7);
+    --tactile-shadow-hover: -2px -2px 8px rgba(255, 255, 255, 0.8),
+                            2px 5px 12px rgba(0, 0, 0, 0.15),
+                            inset -2px -2px 5px rgba(255, 255, 255, 0.4),
+                            inset 2px 2px 4px rgba(0, 0, 0, 0.1);
+    --tactile-shadow-in: inset -3px -3px 7px rgba(255, 255, 255, 0.4),
+                         inset 3px 3px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Chat Input Styling and Animations */
+[data-tactile="true"] .input-container {
+    position: relative;
+    padding: 1.5rem;
+    margin: 0 5px 5px;
+    background: linear-gradient(
+        to top,
+        var(--background-primary) 0%,
+        rgba(var(--background-secondary-rgb), 0.5) 100%
+    );
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    z-index: 10;
+    border-radius: 0 0 20px 20px;
+}
+
+[data-tactile="true"] .input-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    background: var(--background-primary);
+    padding: 0.5rem;
+    border-radius: var(--input-radius);
+    box-shadow:
+        -8px -8px 20px rgba(255, 255, 255, 0.05),
+        8px 8px 24px rgba(0, 0, 0, 0.3),
+        inset 1px 1px 2px rgba(255, 255, 255, 0.05);
+    position: relative;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    transform: translateZ(0) perspective(1000px);
+    transform-style: preserve-3d;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+[data-tactile="true"] .input-wrapper::after {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    height: 2px;
+    background: linear-gradient(90deg,
+        transparent,
+        var(--text-accent),
+        transparent
+    );
+    opacity: 0;
+    filter: drop-shadow(0 0 10px var(--text-accent))
+           drop-shadow(0 0 20px var(--text-accent));
+}
+
+[data-tactile="true"] .input-wrapper.loading::after {
+    opacity: 1;
+    animation: loadingLine 2s ease-in-out infinite;
+}
+
+@keyframes loadingLine {
+    0% {
+        transform: translateX(-100%);
+        opacity: 0;
+    }
+    50% {
+        opacity: 1;
+    }
+    100% {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}
+
+[data-tactile="true"] .input-wrapper.loading {
+    animation: inputPulse 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    pointer-events: none;
+    opacity: 0.9;
+}
+
+@keyframes inputPulse {
+    0%, 100% {
+        box-shadow:
+            -8px -8px 20px rgba(255, 255, 255, 0.05),
+            8px 8px 24px rgba(0, 0, 0, 0.3);
+        transform: translateZ(0) perspective(1000px);
+    }
+    50% {
+        box-shadow:
+            -12px -12px 30px rgba(255, 255, 255, 0.07),
+            12px 12px 30px rgba(0, 0, 0, 0.35);
+        transform: translateZ(10px) perspective(1000px) scale(1.01);
+    }
+}
+
+[data-tactile="true"] #user-input {
+    flex: 1;
+    padding: 0.75rem 1rem;
+    border: none;
+    background: rgba(0, 0, 0, 0.2);
+    color: var(--text-normal);
+    font-size: 0.9375rem;
+    line-height: 1.5;
+    min-height: 24px;
+    max-height: 150px;
+    resize: none;
+    outline: none !important;
+    font-family: inherit;
+    width: 100%;
+    display: block;
+    border-radius: 16px;
+    box-shadow:
+        inset 2px 2px 4px rgba(0, 0, 0, 0.3),
+        inset -1px -1px 2px rgba(255, 255, 255, 0.05);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transform: translateZ(0);
+    scrollbar-width: thin;
+    scrollbar-color: var(--text-accent) rgba(0, 0, 0, 0.2);
+}
+
+[data-tactile="true"] #user-input::-webkit-scrollbar {
+    width: 8px;
+}
+
+[data-tactile="true"] #user-input::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 10px;
+}
+
+[data-tactile="true"] #user-input::-webkit-scrollbar-thumb {
+    background-color: var(--text-accent);
+    border-radius: 10px;
+    border: 2px solid rgba(0, 0, 0, 0.2);
+}
+
+[data-tactile="true"] #user-input::-webkit-scrollbar-thumb:hover {
+    background-color: var(--primary-hover);
+}
+
+[data-tactile="true"] #user-input:focus {
+    background: rgba(0, 0, 0, 0.25);
+    box-shadow:
+        inset 3px 3px 6px rgba(0, 0, 0, 0.35),
+        inset -1px -1px 2px rgba(255, 255, 255, 0.05);
+    transform: translateZ(5px);
+}
+
+/* Tactile Button Styling */
+[data-tactile="true"] #send-button,
+[data-tactile="true"] .theme-button,
+[data-tactile="true"] .settings-button,
+[data-tactile="true"] .upload-button,
+[data-tactile="true"] .history-toggle-btn,
+[data-tactile="true"] .new-chat-btn,
+[data-tactile="true"] .image-action-btn,
+[data-tactile="true"] .profile-link,
+[data-tactile="true"] .menu-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem; /* Default width, adjust as needed */
+    height: 2.75rem; /* Default height, adjust as needed */
+    border-radius: 50%;
+    background: var(--background-primary);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    flex-shrink: 0;
+    box-shadow:
+        -5px -5px 10px rgba(255, 255, 255, 0.1),
+        5px 5px 10px rgba(0, 0, 0, 0.25),
+        inset 0 1px 1px rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    position: relative;
+    overflow: hidden;
+}
+
+[data-tactile="true"] #send-button:hover,
+[data-tactile="true"] .theme-button:hover,
+[data-tactile="true"] .settings-button:hover,
+[data-tactile="true"] .upload-button:hover,
+[data-tactile="true"] .history-toggle-btn:hover,
+[data-tactile="true"] .new-chat-btn:hover,
+[data-tactile="true"] .image-action-btn:hover,
+[data-tactile="true"] .profile-link:hover,
+[data-tactile="true"] .menu-button:hover {
+    color: var(--text-accent);
+    transform: translateY(-2px);
+    box-shadow:
+        -1px -1px 5px rgba(255, 255, 255, 0.2),
+        1px 1px 5px rgba(0, 0, 0, 0.3),
+        inset -2px -2px 5px rgba(255, 255, 255, 0.1),
+        inset 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+[data-tactile="true"] #send-button:active,
+[data-tactile="true"] .theme-button:active,
+[data-tactile="true"] .settings-button:active,
+[data-tactile="true"] .upload-button:active,
+[data-tactile="true"] .history-toggle-btn:active,
+[data-tactile="true"] .new-chat-btn:active,
+[data-tactile="true"] .image-action-btn:active,
+[data-tactile="true"] .profile-link:active,
+[data-tactile="true"] .menu-button:active {
+     transform: translateY(1px);
+  box-shadow:
+      inset -2px -2px 5px rgba(255, 255, 255, 0.1),
+      inset 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+[data-tactile="true"] #send-button svg,
+[data-tactile="true"] .theme-button svg,
+[data-tactile="true"] .settings-button svg,
+[data-tactile="true"] .upload-button svg,
+[data-tactile="true"] .history-toggle-btn svg,
+[data-tactile="true"] .new-chat-btn svg,
+[data-tactile="true"] .image-action-btn svg,
+[data-tactile="true"] .profile-link svg,
+[data-tactile="true"] .menu-button svg {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+[data-tactile="true"] #send-button:hover svg,
+[data-tactile="true"] .theme-button:hover svg,
+[data-tactile="true"] .settings-button:hover svg,
+[data-tactile="true"] .upload-button:hover svg,
+[data-tactile="true"] .history-toggle-btn:hover svg,
+[data-tactile="true"] .new-chat-btn:hover svg,
+[data-tactile="true"] .image-action-btn:hover svg,
+[data-tactile="true"] .profile-link:hover svg,
+[data-tactile="true"] .menu-button:hover svg {
+    color: var(--text-accent);
+    filter: drop-shadow(0 0 3px var(--text-accent));
+}
+
+/* Add shimmer effect to all tactile buttons */
+[data-tactile="true"] #send-button::after,
+[data-tactile="true"] .theme-button::after,
+[data-tactile="true"] .settings-button::after,
+[data-tactile="true"] .upload-button::after,
+[data-tactile="true"] .history-toggle-btn::after,
+[data-tactile="true"] .new-chat-btn::after,
+[data-tactile="true"] .profile-link::after,
+[data-tactile="true"] .menu-button::after {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    height: 2px;
+    background: linear-gradient(90deg,
+        transparent,
+        var(--text-accent),
+        transparent
+    );
+    opacity: 0;
+    filter: drop-shadow(0 0 10px var(--text-accent))
+           drop-shadow(0 0 20px var(--text-accent));
+    animation: shimmerBg 4s linear infinite;
+    pointer-events: none;
+    mix-blend-mode: color-dodge;
+}
+
+@keyframes shimmerBg {
+    0% {
+        opacity: 0;
+        transform: translateX(-100%);
+    }
+    50% {
+        opacity: 0.7;
+    }
+    100% {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+}
+
+/* Chat Interface Container Styling with Tactile Theme */
+[data-tactile="true"] .chat-container {
+    background: linear-gradient(145deg, 
+        rgba(20, 20, 25, 0.95) 0%, 
+        rgba(30, 30, 35, 0.8) 50%,
+        rgba(20, 20, 25, 0.95) 100%
+    );
+    box-shadow: 
+        -10px -10px 30px rgba(255, 255, 255, 0.05),
+        10px 10px 30px rgba(0, 0, 0, 0.4),
+        inset 1px 1px 2px rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    transform-style: preserve-3d;
+    perspective: 1000px;
+}
+
+[data-tactile="true"] #messages-container {
+    background: linear-gradient(160deg, 
+        rgba(25, 26, 30, 0.4) 0%, 
+        rgba(30, 32, 35, 0.2) 100%
+    );
+    scrollbar-width: thin;
+    scrollbar-color: rgba(var(--text-accent-rgb), 0.5) rgba(0, 0, 0, 0.2);
+    scroll-behavior: smooth;
+}
+
+[data-tactile="true"] #messages-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+[data-tactile="true"] #messages-container::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 10px;
+    margin: 5px;
+}
+
+[data-tactile="true"] #messages-container::-webkit-scrollbar-thumb {
+    background-color: rgba(var(--text-accent-rgb), 0.5);
+    border-radius: 10px;
+    border: 1px solid rgba(0, 0, 0, 0.3);
+    box-shadow: inset 0 0 6px rgba(var(--text-accent-rgb), 0.3);
+}
+
+[data-tactile="true"] #messages-container::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(var(--text-accent-rgb), 0.7);
+}
+
+[data-theme="light"][data-tactile="true"] .chat-container {
+    background: linear-gradient(145deg, 
+        rgba(235, 238, 245, 0.9) 0%, 
+        rgba(245, 248, 255, 0.8) 50%,
+        rgba(235, 238, 245, 0.9) 100%
+    );
+    box-shadow: 
+        -10px -10px 30px rgba(255, 255, 255, 0.8),
+        10px 10px 30px rgba(0, 0, 0, 0.1),
+        inset 1px 1px 2px rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="light"][data-tactile="true"] #messages-container {
+    background: linear-gradient(160deg, 
+        rgba(235, 238, 245, 0.5) 0%, 
+        rgba(245, 248, 255, 0.3) 100%
+    );
+}
+
+[data-theme="light"][data-tactile="true"] #user-input {
+    background: rgba(0, 0, 0, 0.05);
+    box-shadow:
+        inset 2px 2px 4px rgba(0, 0, 0, 0.1),
+        inset -1px -1px 2px rgba(255, 255, 255, 0.5);
+}
+
+[data-theme="light"][data-tactile="true"] #user-input:focus {
+    background: rgba(0, 0, 0, 0.08);
+    box-shadow:
+        inset 3px 3px 6px rgba(0, 0, 0, 0.15),
+        inset -1px -1px 2px rgba(255, 255, 255, 0.4);
+}
+
+/* Tactile styling for example prompts */
+[data-tactile="true"] .examples-container {
+    background: linear-gradient(145deg, 
+        rgba(30, 32, 38, 0.7) 0%, 
+        rgba(35, 37, 45, 0.6) 100%
+    );
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    box-shadow: 
+        -5px -5px 10px rgba(255, 255, 255, 0.05),
+        5px 5px 15px rgba(0, 0, 0, 0.25),
+        inset 0 1px 1px rgba(255, 255, 255, 0.05);
+    transform-style: preserve-3d;
+    perspective: 1000px;
+}
+
+[data-tactile="true"] .examples-header {
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 500;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+[data-tactile="true"] .examples-header svg {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+[data-tactile="true"] .example-button {
+    background: rgba(25, 26, 30, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 
+        -3px -3px 7px rgba(255, 255, 255, 0.05),
+        3px 3px 7px rgba(0, 0, 0, 0.2);
+    transform: translateZ(0);
+    transition: all 0.3s cubic-bezier(0.19, 1, 0.22, 1);
+    color: rgba(255, 255, 255, 0.9);
+}
+
+[data-tactile="true"] .example-button:hover {
+    transform: translateY(-4px) scale(1.03) translateZ(10px);
+    box-shadow: 
+        -2px -2px 5px rgba(255, 255, 255, 0.1),
+        5px 5px 15px rgba(0, 0, 0, 0.25),
+        0 0 10px rgba(255, 255, 255, 0.2);
+    background: rgba(35, 36, 42, 0.8);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+[data-tactile="true"] .example-button svg {
+    filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.3));
+    transition: all 0.3s ease;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+[data-tactile="true"] .example-button:hover svg {
+    color: rgba(255, 255, 255, 1);
+    filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.5));
+    transform: scale(1.1);
+}
+
+/* Message styling for tactile interface */
+[data-tactile="true"] .user-message .message-content {
+    background: linear-gradient(145deg, 
+        rgba(35, 36, 42, 0.9) 0%, 
+        rgba(25, 26, 30, 0.7) 100%
+    );
+    box-shadow: 
+        -5px -5px 15px rgba(255, 255, 255, 0.05),
+        8px 8px 20px rgba(0, 0, 0, 0.3),
+        inset 1px 1px 2px rgba(255, 255, 255, 0.05);
+    border-right: 3px solid rgba(255, 255, 255, 0.3);
+    border-radius: var(--border-radius) var(--border-radius) 0 var(--border-radius);
+    transform-style: preserve-3d;
+    perspective: 1000px;
+}
+
+[data-tactile="true"] .ai-message .message-content {
+    background: linear-gradient(145deg, 
+        rgba(30, 32, 40, 0.9) 0%, 
+        rgba(25, 26, 32, 0.7) 100%
+    );
+    box-shadow: 
+        -5px -5px 15px rgba(255, 255, 255, 0.05),
+        8px 8px 20px rgba(0, 0, 0, 0.3),
+        inset 1px 1px 2px rgba(255, 255, 255, 0.05);
+    border-left: 3px solid rgba(255, 255, 255, 0.3);
+    border-radius: var(--border-radius) var(--border-radius) var(--border-radius) 0;
+    transform-style: preserve-3d;
+    perspective: 1000px;
+}
+
+[data-tactile="true"] .system-message-inner {
+    background: linear-gradient(145deg,
+        rgba(30, 32, 38, 0.85) 0%, 
+        rgba(35, 37, 45, 0.75) 100%
+    );
+    box-shadow: 
+        -5px -5px 15px rgba(255, 255, 255, 0.05),
+        8px 8px 20px rgba(0, 0, 0, 0.3),
+        inset 1px 1px 2px rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+[data-tactile="true"] .system-message-inner::before,
+[data-tactile="true"] .system-message-inner::after {
+    background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.5), transparent);
+}
+
+[data-tactile="true"] .system-icon {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+/* Light mode message styling for tactile interface */
+[data-theme="light"][data-tactile="true"] .user-message .message-content {
+    background: linear-gradient(145deg, 
+        rgba(242, 244, 250, 0.9) 0%, 
+        rgba(232, 234, 240, 0.7) 100%
+    );
+    box-shadow: 
+        -5px -5px 15px rgba(255, 255, 255, 0.7),
+        8px 8px 20px rgba(0, 0, 0, 0.1),
+        inset 1px 1px 2px rgba(255, 255, 255, 0.7);
+    border-right: 3px solid rgba(0, 0, 0, 0.2);
+    color: var(--text-primary);
+}
+
+[data-theme="light"][data-tactile="true"] .ai-message .message-content {
+    background: linear-gradient(145deg, 
+        rgba(238, 240, 246, 0.9) 0%, 
+        rgba(228, 230, 236, 0.7) 100%
+    );
+    box-shadow: 
+        -5px -5px 15px rgba(255, 255, 255, 0.7),
+        8px 8px 20px rgba(0, 0, 0, 0.1),
+        inset 1px 1px 2px rgba(255, 255, 255, 0.7);
+    border-left: 3px solid rgba(0, 0, 0, 0.2);
+    color: var(--text-primary);
+}
+
+[data-theme="light"][data-tactile="true"] .system-message-inner {
+    background: linear-gradient(145deg,
+        rgba(240, 242, 248, 0.85) 0%, 
+        rgba(230, 232, 238, 0.75) 100%
+    );
+    box-shadow: 
+        -5px -5px 15px rgba(255, 255, 255, 0.7),
+        8px 8px 20px rgba(0, 0, 0, 0.1),
+        inset 1px 1px 2px rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"][data-tactile="true"] .system-message-inner::before,
+[data-theme="light"][data-tactile="true"] .system-message-inner::after {
+    background: linear-gradient(to right, transparent, rgba(0, 0, 0, 0.2), transparent);
+}
+
+[data-theme="light"][data-tactile="true"] .system-icon {
+    color: var(--text-primary);
+}
+
+/* Light mode example prompts for tactile theme */
+[data-theme="light"][data-tactile="true"] .examples-container {
+    background: linear-gradient(145deg, 
+        rgba(240, 242, 248, 0.7) 0%, 
+        rgba(230, 232, 238, 0.6) 100%
+    );
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    box-shadow: 
+        -5px -5px 10px rgba(255, 255, 255, 0.7),
+        5px 5px 15px rgba(0, 0, 0, 0.08),
+        inset 0 1px 1px rgba(255, 255, 255, 0.7);
+}
+
+[data-theme="light"][data-tactile="true"] .examples-header {
+    color: var(--text-primary);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"][data-tactile="true"] .examples-header svg {
+    color: var(--text-primary);
+}
+
+[data-theme="light"][data-tactile="true"] .example-button {
+    background: rgba(235, 238, 245, 0.7);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    box-shadow: 
+        -3px -3px 7px rgba(255, 255, 255, 0.7),
+        3px 3px 7px rgba(0, 0, 0, 0.1);
+    color: var(--text-primary);
+}
+
+[data-theme="light"][data-tactile="true"] .example-button svg {
+    color: var(--text-primary);
+    filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.2));
+}
+
+[data-theme="light"][data-tactile="true"] .example-button:hover {
+    background: rgba(225, 228, 235, 0.8);
+    box-shadow: 
+        -2px -2px 5px rgba(255, 255, 255, 0.9),
+        5px 5px 15px rgba(0, 0, 0, 0.15),
+        0 0 10px rgba(0, 0, 0, 0.05);
+    border-color: rgba(0, 0, 0, 0.15);
+}
+
+[data-theme="light"][data-tactile="true"] .example-button:hover svg {
+    color: var(--text-primary);
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+}
+
+/* Tactile styling for profile card */
+[data-tactile="true"] .profile-card {
+    background: rgba(25, 26, 30, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 
+        -5px -5px 10px rgba(255, 255, 255, 0.05),
+        5px 5px 15px rgba(0, 0, 0, 0.3),
+        inset 0 1px 2px rgba(255, 255, 255, 0.05);
+    transform-style: preserve-3d;
+    perspective: 1200px;
+    transform: translateZ(0);
+    animation: tactile-profile-pulse 8s infinite alternate ease-in-out;
+    position: relative;
+    overflow: hidden;
+}
+
+[data-tactile="true"] .profile-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.05);
+    pointer-events: none;
+    z-index: 2;
+}
+
+[data-tactile="true"] .profile-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        125deg,
+        rgba(30, 32, 40, 0.7) 0%,
+        rgba(40, 42, 50, 0.5) 25%,
+        rgba(45, 47, 55, 0.6) 50%,
+        rgba(40, 42, 50, 0.5) 75%,
+        rgba(30, 32, 40, 0.7) 100%
+    );
+    opacity: 0.8;
+    pointer-events: none;
+    z-index: 1;
+    animation: tactile-gradient-shift 12s infinite alternate ease-in-out;
+}
+
+@keyframes tactile-profile-pulse {
+    0% {
+        box-shadow: 
+            -5px -5px 10px rgba(255, 255, 255, 0.05),
+            5px 5px 15px rgba(0, 0, 0, 0.3),
+            0 0 0 1px rgba(255, 255, 255, 0.08);
+    }
+    100% {
+        box-shadow: 
+            -7px -7px 20px rgba(255, 255, 255, 0.07),
+            7px 7px 20px rgba(0, 0, 0, 0.4),
+            0 0 0 1px rgba(255, 255, 255, 0.12);
+    }
+}
+
+@keyframes tactile-gradient-shift {
+    0% {
+        opacity: 0.5;
+        background-position: 0% 50%;
+    }
+    50% {
+        opacity: 0.8;
+        background-position: 100% 50%;
+    }
+    100% {
+        opacity: 0.5;
+        background-position: 0% 50%;
+    }
+}
+
+/* Update light mode profile card for tactile */
+[data-theme="light"][data-tactile="true"] .profile-card {
+    background: linear-gradient(
+        145deg, 
+        rgba(248, 250, 255, 0.7) 0%, 
+        rgba(240, 245, 255, 0.5) 100%
+    );
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    box-shadow: 
+        -5px -5px 10px rgba(255, 255, 255, 0.9),
+        5px 5px 15px rgba(0, 0, 0, 0.1),
+        inset 0 1px 2px rgba(255, 255, 255, 0.9);
+}
+
+[data-theme="light"][data-tactile="true"] .profile-card::before {
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="light"][data-tactile="true"] .profile-card::after {
+    background: linear-gradient(
+        125deg,
+        rgba(245, 248, 255, 0.7) 0%,
+        rgba(250, 253, 255, 0.5) 25%,
+        rgba(245, 250, 255, 0.6) 50%,
+        rgba(250, 253, 255, 0.5) 75%,
+        rgba(245, 248, 255, 0.7) 100%
+    );
+    opacity: 0.6;
+}
+
+/* Add new styles for profile name in tactile mode */
+[data-tactile="true"] .profile-name {
+    font-weight: 600;
+    color: #e0e0e0;
+    font-size: 15px;
+    margin-bottom: 2px;
+    text-shadow: 
+        0px 1px 2px rgba(0, 0, 0, 0.8),
+        0px 2px 4px rgba(0, 0, 0, 0.6);
+    letter-spacing: 0.5px;
+    position: relative;
+    z-index: 1;
+    transition: all 0.3s ease;
+    transform: translateZ(10px);
+    cursor: pointer;
+    text-decoration: none;
+    background: none;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: #e0e0e0;
+}
+
+[data-tactile="true"] .profile-name:hover {
+    color: #ffffff;
+    text-shadow: 
+        0px 1px 3px rgba(255, 255, 255, 0.2),
+        0px 2px 6px rgba(0, 0, 0, 0.8);
+    transform: translateZ(15px) scale(1.05);
+    -webkit-text-fill-color: #ffffff;
+}
+
+/* Settings Modal Tactile Styling */
+[data-tactile="true"] .modal-content {
+    background: linear-gradient(145deg, 
+        rgba(30, 32, 40, 0.9) 0%, 
+        rgba(35, 37, 45, 0.8) 100%
+    );
+    border-radius: 24px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    box-shadow: 
+        -10px -10px 30px rgba(255, 255, 255, 0.05),
+        10px 10px 30px rgba(0, 0, 0, 0.4),
+        inset 1px 1px 2px rgba(255, 255, 255, 0.05);
+    transform-style: preserve-3d;
+    perspective: 1200px;
+}
+
+[data-tactile="true"] .close-button {
+    background: rgba(25, 26, 30, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 
+        -3px -3px 6px rgba(255, 255, 255, 0.05),
+        3px 3px 6px rgba(0, 0, 0, 0.2);
+    color: var(--text-muted);
+    transition: all 0.3s cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+[data-tactile="true"] .close-button:hover {
+    transform: rotate(90deg);
+    background: rgba(var(--danger-color), 0.15);
+    color: var(--danger-color);
+    box-shadow: 
+        -2px -2px 5px rgba(255, 255, 255, 0.1),
+        5px 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+[data-tactile="true"] .input-with-icon input {
+    background: rgba(20, 21, 25, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 
+        inset 2px 2px 4px rgba(0, 0, 0, 0.3),
+        inset -1px -1px 2px rgba(255, 255, 255, 0.05);
+    color: var(--text-normal);
+    border-radius: 12px;
+    padding: 14px 16px;
+    transition: all 0.3s cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+[data-tactile="true"] .input-with-icon input:focus {
+    border-color: rgba(255, 255, 255, 0.15);
+    box-shadow: 
+        inset 3px 3px 6px rgba(0, 0, 0, 0.35),
+        inset -1px -1px 2px rgba(255, 255, 255, 0.05),
+        0 0 0 1px rgba(255, 255, 255, 0.1);
+    background: rgba(20, 21, 25, 0.9);
+}
+
+[data-tactile="true"] #save-api-key {
+    background: rgba(25, 26, 30, 0.7);
+    color: var(--text-normal);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 14px;
+    box-shadow: 
+        -5px -5px 10px rgba(255, 255, 255, 0.05),
+        5px 5px 15px rgba(0, 0, 0, 0.25),
+        inset 0 1px 1px rgba(255, 255, 255, 0.05);
+    transition: all 0.3s cubic-bezier(0.19, 1, 0.22, 1);
+    transform: translateZ(0);
+}
+
+[data-tactile="true"] #save-api-key:hover {
+    background: rgba(var(--text-accent-rgb), 0.2);
+    color: var(--text-accent);
+    transform: translateY(-5px) translateZ(10px);
+    box-shadow: 
+        -2px -2px 5px rgba(255, 255, 255, 0.1),
+        5px 5px 20px rgba(0, 0, 0, 0.3),
+        0 0 15px rgba(var(--text-accent-rgb), 0.2);
+}
+
+[data-tactile="true"] #save-api-key:active {
+    transform: translateY(0) translateZ(0);
+    box-shadow: 
+        inset -2px -2px 5px rgba(255, 255, 255, 0.05),
+        inset 2px 2px 5px rgba(0, 0, 0, 0.2);
+    transition: all 0.1s ease;
+}
+
+[data-tactile="true"] .api-key-link {
+    background: rgba(25, 26, 30, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    box-shadow: 
+        -3px -3px 6px rgba(255, 255, 255, 0.05),
+        3px 3px 8px rgba(0, 0, 0, 0.2);
+    color: var(--text-secondary);
+    transition: all 0.3s cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+[data-tactile="true"] .api-key-link:hover {
+    background: rgba(30, 32, 40, 0.8);
+    color: var(--text-accent);
+    transform: translateY(-3px) translateZ(5px);
+    box-shadow: 
+        -2px -2px 5px rgba(255, 255, 255, 0.1),
+        5px 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+[data-tactile="true"] .slider {
+    background-color: rgba(20, 21, 25, 0.7);
+    box-shadow: inset 2px 2px 4px rgba(0, 0, 0, 0.3),
+                inset -1px -1px 2px rgba(255, 255, 255, 0.05);
+}
+
+[data-tactile="true"] .slider:before {
+    background-color: #ddd;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+[data-tactile="true"] input:checked + .slider {
+    background-color: rgba(var(--text-accent-rgb), 0.3);
+}
+
+[data-tactile="true"] input[type="range"] {
+    background: rgba(20, 21, 25, 0.7);
+    box-shadow: inset 2px 2px 4px rgba(0, 0, 0, 0.3),
+                inset -1px -1px 2px rgba(255, 255, 255, 0.05);
+}
+
+[data-tactile="true"] input[type="range"]::-webkit-slider-thumb {
+    background: var(--text-accent);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+[data-tactile="true"] input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+    box-shadow: 0 4px 12px rgba(var(--text-accent-rgb), 0.4);
+}
+
+/* Light mode settings for tactile theme */
+[data-theme="light"][data-tactile="true"] .modal-content {
+    background: linear-gradient(145deg, 
+        rgba(240, 242, 248, 0.9) 0%, 
+        rgba(230, 232, 238, 0.8) 100%
+    );
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    box-shadow: 
+        -10px -10px 30px rgba(255, 255, 255, 0.8),
+        10px 10px 30px rgba(0, 0, 0, 0.1),
+        inset 1px 1px 2px rgba(255, 255, 255, 0.7);
+}
+
+[data-theme="light"][data-tactile="true"] .close-button {
+    background: rgba(235, 238, 245, 0.8);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    box-shadow: 
+        -3px -3px 6px rgba(255, 255, 255, 0.8),
+        3px 3px 6px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"][data-tactile="true"] .input-with-icon input {
+    background: rgba(235, 238, 245, 0.7);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    box-shadow: 
+        inset 2px 2px 4px rgba(0, 0, 0, 0.1),
+        inset -1px -1px 2px rgba(255, 255, 255, 0.5);
+    color: var(--text-normal);
+}
+
+[data-theme="light"][data-tactile="true"] .input-with-icon input:focus {
+    border-color: rgba(var(--text-accent-rgb), 0.3);
+    box-shadow: 
+        inset 3px 3px 6px rgba(0, 0, 0, 0.15),
+        inset -1px -1px 2px rgba(255, 255, 255, 0.4),
+        0 0 0 1px rgba(var(--text-accent-rgb), 0.15);
+    background: rgba(240, 242, 248, 0.9);
+}
+
+[data-theme="light"][data-tactile="true"] #save-api-key {
+    background: rgba(235, 238, 245, 0.8);
+    color: var(--text-normal);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    box-shadow: 
+        -5px -5px 10px rgba(255, 255, 255, 0.8),
+        5px 5px 15px rgba(0, 0, 0, 0.08),
+        inset 0 1px 1px rgba(255, 255, 255, 0.7);
+}
+
+[data-theme="light"][data-tactile="true"] #save-api-key:hover {
+    background: rgba(var(--text-accent-rgb), 0.15);
+    color: var(--text-accent);
+    box-shadow: 
+        -2px -2px 5px rgba(255, 255, 255, 0.9),
+        5px 5px 15px rgba(0, 0, 0, 0.1),
+        0 0 15px rgba(var(--text-accent-rgb), 0.1);
+}
+
+[data-theme="light"][data-tactile="true"] .api-key-link {
+    background: rgba(235, 238, 245, 0.7);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    box-shadow: 
+        -3px -3px 6px rgba(255, 255, 255, 0.8),
+        3px 3px 8px rgba(0, 0, 0, 0.1);
+    color: var(--text-secondary);
+}
+
+[data-theme="light"][data-tactile="true"] .slider {
+    background-color: rgba(220, 222, 230, 0.7);
+    box-shadow: inset 2px 2px 4px rgba(0, 0, 0, 0.1),
+                inset -1px -1px 2px rgba(255, 255, 255, 0.5);
+}
+
+[data-theme="light"][data-tactile="true"] input[type="range"] {
+    background: rgba(220, 222, 230, 0.7);
+    box-shadow: inset 2px 2px 4px rgba(0, 0, 0, 0.1),
+                inset -1px -1px 2px rgba(255, 255, 255, 0.5);
+}
+
+/* Enhanced buttons for tactile interface in both modes */
+[data-tactile="true"] #send-button,
+[data-tactile="true"] .theme-button,
+[data-tactile="true"] .settings-button,
+[data-tactile="true"] .upload-button,
+[data-tactile="true"] .history-toggle-btn,
+[data-tactile="true"] .new-chat-btn,
+[data-tactile="true"] .image-action-btn,
+[data-tactile="true"] .profile-link,
+[data-tactile="true"] .menu-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem; /* Default width, adjust as needed */
+    height: 2.75rem; /* Default height, adjust as needed */
+    border-radius: 50%;
+    background: var(--background-primary);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    flex-shrink: 0;
+    box-shadow:
+        -5px -5px 10px rgba(255, 255, 255, 0.1),
+        5px 5px 10px rgba(0, 0, 0, 0.25),
+        inset 0 1px 1px rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    position: relative;
+    overflow: hidden;
+}
+
+/* Add specific styles for light mode buttons */
+[data-theme="light"][data-tactile="true"] #send-button,
+[data-theme="light"][data-tactile="true"] .theme-button,
+[data-theme="light"][data-tactile="true"] .settings-button,
+[data-theme="light"][data-tactile="true"] .upload-button,
+[data-theme="light"][data-tactile="true"] .history-toggle-btn,
+[data-theme="light"][data-tactile="true"] .new-chat-btn,
+[data-theme="light"][data-tactile="true"] .image-action-btn,
+[data-theme="light"][data-tactile="true"] .profile-link,
+[data-theme="light"][data-tactile="true"] .menu-button {
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    box-shadow:
+        -5px -5px 10px rgba(255, 255, 255, 0.9),
+        5px 5px 10px rgba(0, 0, 0, 0.1),
+        inset 0 1px 1px rgba(255, 255, 255, 0.9);
+    color: rgba(30, 30, 35, 0.9);
+}
+
+[data-theme="light"][data-tactile="true"] #send-button svg,
+[data-theme="light"][data-tactile="true"] .theme-button svg,
+[data-theme="light"][data-tactile="true"] .settings-button svg,
+[data-theme="light"][data-tactile="true"] .upload-button svg,
+[data-theme="light"][data-tactile="true"] .history-toggle-btn svg,
+[data-theme="light"][data-tactile="true"] .new-chat-btn svg,
+[data-theme="light"][data-tactile="true"] .image-action-btn svg,
+[data-theme="light"][data-tactile="true"] .profile-link svg,
+[data-theme="light"][data-tactile="true"] .menu-button svg {
+    stroke: rgba(30, 30, 35, 0.9);
+    filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.2));
+}
+
+[data-theme="light"][data-tactile="true"] #send-button:hover,
+[data-theme="light"][data-tactile="true"] .theme-button:hover,
+[data-theme="light"][data-tactile="true"] .settings-button:hover,
+[data-theme="light"][data-tactile="true"] .upload-button:hover,
+[data-theme="light"][data-tactile="true"] .history-toggle-btn:hover,
+[data-theme="light"][data-tactile="true"] .new-chat-btn:hover,
+[data-theme="light"][data-tactile="true"] .image-action-btn:hover,
+[data-theme="light"][data-tactile="true"] .profile-link:hover,
+[data-theme="light"][data-tactile="true"] .menu-button:hover {
+    box-shadow:
+        -2px -2px 6px rgba(255, 255, 255, 1),
+        5px 5px 15px rgba(0, 0, 0, 0.15),
+        inset -1px -1px 3px rgba(255, 255, 255, 1),
+        inset 1px 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Enhanced dark mode buttons with more visible white outlines */
+[data-theme="dark"][data-tactile="true"] #send-button,
+[data-theme="dark"][data-tactile="true"] .theme-button,
+[data-theme="dark"][data-tactile="true"] .settings-button,
+[data-theme="dark"][data-tactile="true"] .upload-button,
+[data-theme="dark"][data-tactile="true"] .history-toggle-btn,
+[data-theme="dark"][data-tactile="true"] .new-chat-btn,
+[data-theme="dark"][data-tactile="true"] .image-action-btn,
+[data-theme="dark"][data-tactile="true"] .profile-link,
+[data-theme="dark"][data-tactile="true"] .menu-button {
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow:
+        -5px -5px 10px rgba(255, 255, 255, 0.07),
+        5px 5px 15px rgba(0, 0, 0, 0.3),
+        inset 0 1px 2px rgba(255, 255, 255, 0.08),
+        0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+[data-theme="dark"][data-tactile="true"] #send-button svg,
+[data-theme="dark"][data-tactile="true"] .theme-button svg,
+[data-theme="dark"][data-tactile="true"] .settings-button svg,
+[data-theme="dark"][data-tactile="true"] .upload-button svg,
+[data-theme="dark"][data-tactile="true"] .history-toggle-btn svg,
+[data-theme="dark"][data-tactile="true"] .new-chat-btn svg,
+[data-theme="dark"][data-tactile="true"] .image-action-btn svg,
+[data-theme="dark"][data-tactile="true"] .profile-link svg,
+[data-theme="dark"][data-tactile="true"] .menu-button svg {
+    filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.3));
+}
+
+[data-theme="dark"][data-tactile="true"] #send-button:hover,
+[data-theme="dark"][data-tactile="true"] .theme-button:hover,
+[data-theme="dark"][data-tactile="true"] .settings-button:hover,
+[data-theme="dark"][data-tactile="true"] .upload-button:hover,
+[data-theme="dark"][data-tactile="true"] .history-toggle-btn:hover,
+[data-theme="dark"][data-tactile="true"] .new-chat-btn:hover,
+[data-theme="dark"][data-tactile="true"] .image-action-btn:hover,
+[data-theme="dark"][data-tactile="true"] .profile-link:hover,
+[data-theme="dark"][data-tactile="true"] .menu-button:hover {
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow:
+        -2px -2px 8px rgba(255, 255, 255, 0.1),
+        5px 5px 15px rgba(0, 0, 0, 0.4),
+        inset -1px -1px 3px rgba(255, 255, 255, 0.1),
+        inset 1px 1px 3px rgba(0, 0, 0, 0.3),
+        0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+/* Add theme transition classes for smoother transitions */
+.theme-transitioning,
+.theme-transitioning * {
+    transition-duration: 0.5s !important;
+    transition-timing-function: cubic-bezier(0.19, 1, 0.22, 1) !important;
+}
+
+.tactile-transitioning,
+.tactile-transitioning * {
+    transition-duration: 0.5s !important;
+    transition-timing-function: cubic-bezier(0.19, 1, 0.22, 1) !important;
+}
+
+/* Will-change properties for better performance on critical elements */
+[data-tactile="true"] .chat-container,
+[data-tactile="true"] .input-wrapper,
+[data-tactile="true"] #send-button,
+[data-tactile="true"] .profile-card,
+[data-tactile="true"] .examples-container,
+[data-tactile="true"] .example-button {
+    will-change: transform, box-shadow, background-color;
+}
+
+/* Mobile optimization for tactile mode transitions */
+@media (max-width: 768px) {
+    .theme-transitioning,
+    .theme-transitioning * {
+        transition-duration: 0.3s !important;
+    }
+    
+    .tactile-transitioning,
+    .tactile-transitioning * {
+        transition-duration: 0.3s !important;
+    }
+    
+    /* Reduce animation complexity on mobile */
+    [data-tactile="true"] .profile-card::after,
+    [data-tactile="true"] .profile-card::before,
+    [data-tactile="true"] #send-button::after,
+    [data-tactile="true"] .theme-button::after,
+    [data-tactile="true"] .settings-button::after,
+    [data-tactile="true"] .upload-button::after,
+    [data-tactile="true"] .history-toggle-btn::after,
+    [data-tactile="true"] .new-chat-btn::after,
+    [data-tactile="true"] .profile-link::after,
+    [data-tactile="true"] .menu-button::after {
+        animation-duration: 8s;
+    }
+}
+
+/* System Instructions Button Tactile Styling */
+[data-tactile="true"] .system-instructions-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 50%;
+    background: var(--background-primary);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    flex-shrink: 0;
+    box-shadow: var(--tactile-shadow-out);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    position: relative;
+    overflow: hidden;
+}
+
+[data-tactile="true"] .system-instructions-btn:hover {
+    color: var(--text-accent);
+    transform: translateY(-2px);
+    box-shadow: var(--tactile-shadow-hover);
+}
+
+[data-tactile="true"] .system-instructions-btn:active {
+     transform: translateY(1px);
+     box-shadow: var(--tactile-shadow-in);
+}
+
+[data-tactile="true"] .system-instructions-btn svg {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+[data-tactile="true"] .system-instructions-btn:hover svg {
+    color: var(--text-accent);
+    filter: drop-shadow(0 0 3px var(--text-accent));
+}
+
+/* System Instructions Button Light Mode */
+[data-theme="light"][data-tactile="true"] .system-instructions-btn {
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    box-shadow:
+        -5px -5px 10px rgba(255, 255, 255, 0.9),
+        5px 5px 10px rgba(0, 0, 0, 0.1),
+        inset 0 1px 1px rgba(255, 255, 255, 0.9);
+    color: rgba(30, 30, 35, 0.9);
+}
+
+[data-theme="light"][data-tactile="true"] .system-instructions-btn svg {
+    stroke: rgba(30, 30, 35, 0.9);
+    filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.2));
+}
+
+[data-theme="light"][data-tactile="true"] .system-instructions-btn:hover {
+    box-shadow:
+        -2px -2px 6px rgba(255, 255, 255, 1),
+        5px 5px 15px rgba(0, 0, 0, 0.15),
+        inset -1px -1px 3px rgba(255, 255, 255, 1),
+        inset 1px 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* System Instructions Modal Tactile Styling */
+[data-tactile="true"] .system-instructions-textarea {
+    background: rgba(20, 21, 25, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 
+        inset 2px 2px 4px rgba(0, 0, 0, 0.3),
+        inset -1px -1px 2px rgba(255, 255, 255, 0.05);
+    color: var(--text-normal);
+}
+
+[data-tactile="true"] .system-instructions-textarea:focus {
+    border-color: rgba(255, 255, 255, 0.15);
+    box-shadow: 
+        inset 3px 3px 6px rgba(0, 0, 0, 0.35),
+        inset -1px -1px 2px rgba(255, 255, 255, 0.05),
+        0 0 0 1px rgba(255, 255, 255, 0.1);
+    background: rgba(20, 21, 25, 0.9);
+}
+
+[data-tactile="true"] .reset-button {
+    background: rgba(25, 26, 30, 0.7);
+    color: var(--text-normal);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    box-shadow: 
+        -5px -5px 10px rgba(255, 255, 255, 0.05),
+        5px 5px 15px rgba(0, 0, 0, 0.25),
+        inset 0 1px 1px rgba(255, 255, 255, 0.05);
+    transition: all 0.3s cubic-bezier(0.19, 1, 0.22, 1);
+    transform: translateZ(0);
+}
+
+[data-tactile="true"] .reset-button:hover {
+    background: rgba(30, 30, 35, 0.8);
+    transform: translateY(-4px) translateZ(10px);
+    box-shadow: 
+        -2px -2px 5px rgba(255, 255, 255, 0.1),
+        5px 5px 15px rgba(0, 0, 0, 0.3),
+        0 0 15px rgba(255, 255, 255, 0.05);
+}
+
+/* Light Mode Tactile Styling */
+[data-theme="light"][data-tactile="true"] .system-instructions-textarea {
+    background: rgba(235, 238, 245, 0.7);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    box-shadow: 
+        inset 2px 2px 4px rgba(0, 0, 0, 0.1),
+        inset -1px -1px 2px rgba(255, 255, 255, 0.5);
+}
+
+[data-theme="light"][data-tactile="true"] .system-instructions-textarea:focus {
+    border-color: rgba(var(--text-accent-rgb), 0.3);
+    box-shadow: 
+        inset 3px 3px 6px rgba(0, 0, 0, 0.15),
+        inset -1px -1px 2px rgba(255, 255, 255, 0.4),
+        0 0 0 1px rgba(var(--text-accent-rgb), 0.15);
+    background: rgba(240, 242, 248, 0.9);
+}
+
+[data-theme="light"][data-tactile="true"] .reset-button {
+    background: rgba(235, 238, 245, 0.8);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    box-shadow: 
+        -5px -5px 10px rgba(255, 255, 255, 0.8),
+        5px 5px 15px rgba(0, 0, 0, 0.08),
+        inset 0 1px 1px rgba(255, 255, 255, 0.7);
+}
+
+[data-theme="light"][data-tactile="true"] .reset-button:hover {
+    background: rgba(230, 230, 235, 0.9);
+    box-shadow: 
+        -2px -2px 5px rgba(255, 255, 255, 0.9),
+        5px 5px 15px rgba(0, 0, 0, 0.1),
+        0 0 15px rgba(0, 0, 0, 0.05);
+}
+
+/* System Prompt Styling */
+[data-tactile="true"] .system-prompt-container {
+    background: linear-gradient(145deg, 
+        rgba(30, 32, 38, 0.7) 0%, 
+        rgba(25, 27, 32, 0.5) 100%
+    );
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="light"][data-tactile="true"] .system-prompt-container {
+    background: linear-gradient(145deg, 
+        rgba(240, 242, 248, 0.7) 0%, 
+        rgba(235, 237, 245, 0.5) 100%
+    );
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+}
