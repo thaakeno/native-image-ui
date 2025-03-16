@@ -1,20 +1,31 @@
-# AI Chat Interface
+# Gemini Native Image UI
 
 This web application provides a user-friendly interface for interacting with the Gemini 2.0 AI model. It allows you to send text prompts and images to the AI and receive text and image responses. The interface is designed to be intuitive and customizable, with features like theme switching (light and dark theme), debug mode (for testing and troubleshooting), and settings for API key, temperature, and max output tokens.
 
+![image](https://github.com/user-attachments/assets/c486443c-d107-4b11-99f7-8fa412960151)
+
 ## Key Features
 
-- **AI-Powered Chat:** Interact with the Gemini 2.0 AI model for generating text and images.
-- **Multi-modal Input:** Send both text and images as input to the AI.
+# **AI-Powered Chat:** Interact with the Gemini 2.0 AI model for generating text and images.
+![image](https://github.com/user-attachments/assets/893c0423-fc3b-4901-9537-82a01fbcaa9e)
+
+# **Multi-modal Input:** Send both text and images as input to the AI.
+![image](https://github.com/user-attachments/assets/ac27a06c-b616-4beb-b062-30b544ef5e56)
+
 - **Rich Output:** Receive responses in text format with Markdown rendering and syntax highlighting, as well as AI-generated images.
-- **Persistent Chat History**
-- **Customizable Settings:**
+# **Persistent Chat History**
+![image](https://github.com/user-attachments/assets/7a1f4541-d7a9-4d41-9f41-e2b4f9c24a15)
+
+# **Customizable Settings:**
+![image](https://github.com/user-attachments/assets/cdb77910-2edf-4597-a088-8b3487caa6ca)
     - **API Key:** Securely store and manage your Gemini API key.
     - **Temperature:** Control the creativity and randomness of AI responses.
     - **Max Output Tokens:** Limit the length of AI-generated text responses.
     - **Theme Switching:** Toggle between dark and light themes for comfortable viewing.
     - **Debug Mode:** Enable a debug panel to view detailed logs and troubleshoot issues.
-- **Image Support:**
+    
+# **Image Support:**
+![image](https://github.com/user-attachments/assets/5a651cb6-c8ba-4342-a3af-e5609778dac2)
     - **Image Upload:** Upload local image files to include in prompts.
     - **Paste Images:** Paste images directly from the clipboard.
     - **Image Previews:** View previews of uploaded and pasted images before sending.
