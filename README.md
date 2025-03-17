@@ -118,6 +118,9 @@ This web application provides a user-friendly interface for interacting with the
 
 [Contributions are welcome! Please feel free to submit pull requests or open issues for any bugs or feature requests.]
 
+
+Version 1.0.2
+
 ## License
 
 [MIT License - feel free to use and modify this project.]
