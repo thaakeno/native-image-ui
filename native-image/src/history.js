@@ -427,6 +427,20 @@ class ChatHistory {
         
         this.currentConversationId = id;
         const messagesCopy = JSON.parse(JSON.stringify(conversation.messages));
+        
+        // Debug the conversation content to check if deleted messages are still there
+        this.debugLog('Loading conversation content', { 
+            id, 
+            messageCount: messagesCopy.length,
+            userMessages: messagesCopy.filter(m => m.role === 'user').length,
+            modelMessages: messagesCopy.filter(m => m.role === 'model').length,
+            firstFewMessages: messagesCopy.slice(0, 3).map(m => ({
+                role: m.role,
+                textPreview: m.parts && m.parts[0] && m.parts[0].text ? 
+                    m.parts[0].text.substring(0, 30) + '...' : '[no text]'
+            }))
+        });
+        
         messagesCopy.forEach(message => {
             if (!message.parts || message.parts.length === 0) {
                 message.parts = [{ text: " " }];
@@ -545,6 +559,39 @@ class ChatHistory {
         this.debugLog('Deleted conversation', { id });
     }
     
+    // New method to delete conversation by ID without confirmation
+    // Used when a conversation becomes empty after message deletion
+    deleteConversationById(id) {
+        if (!id) return false;
+        
+        this.debugLog('Deleting conversation by ID', { id });
+        const index = this.conversations.findIndex(c => c.id === id);
+        
+        if (index === -1) {
+            this.debugLog('Conversation not found for deletion', { id });
+            return false;
+        }
+        
+        // Remove from array
+        this.conversations.splice(index, 1);
+        
+        // Reset current conversation ID if it matches
+        if (this.currentConversationId === id) {
+            this.currentConversationId = null;
+        }
+        
+        // Save to storage
+        this.saveToStorage();
+        
+        // Update UI if history panel is open
+        if (this.historyPanel && this.historyPanel.classList.contains('open')) {
+            this.renderConversationsList();
+        }
+        
+        this.debugLog('Successfully deleted conversation by ID', { id, remainingConversations: this.conversations.length });
+        return true;
+    }
+    
     clearAllHistory() {
         if (!confirm('Are you sure you want to delete all conversations? This cannot be undone.')) return;
         this.conversations = [];
@@ -573,28 +620,52 @@ class ChatHistory {
         this.debugLog('Toggled pin status', { id, pinned: conversation.pinned });
     }
     
-    saveCurrentConversation() {
+    saveCurrentConversation(forceUpdate = false) {
+        // Don't save empty chat history
         if (!this.app.chatHistory || this.app.chatHistory.length === 0) {
-            this.debugLog('No messages to save');
+            // If chat history is empty and we have a current conversation, delete it
+            if (this.currentConversationId) {
+                const index = this.conversations.findIndex(c => c.id === this.currentConversationId);
+                if (index !== -1) {
+                    this.conversations.splice(index, 1);
+                    this.debugLog('Deleted empty conversation', { id: this.currentConversationId });
+                    this.currentConversationId = null;
+                    this.saveToStorage();
+                    
+                    // Force render the conversations list to reflect changes immediately
+                    if (this.historyPanel && this.historyPanel.classList.contains('open')) {
+                        this.renderConversationsList();
+                    }
+                }
+            }
+            this.debugLog('No messages to save, skipping save operation');
             return;
         }
+        
         const now = new Date();
         if (this.currentConversationId) {
             const existingConversation = this.conversations.find(c => c.id === this.currentConversationId);
             if (existingConversation) {
-                if (JSON.stringify(existingConversation.messages) !== JSON.stringify(this.app.chatHistory)) {
+                // If force update or content has changed
+                if (forceUpdate || JSON.stringify(existingConversation.messages) !== JSON.stringify(this.app.chatHistory)) {
+                    // CRITICAL: Replace the entire message array with a fresh copy
                     existingConversation.messages = JSON.parse(JSON.stringify(this.app.chatHistory));
                     existingConversation.lastUpdated = now.toISOString();
                     if (existingConversation.title === 'New Conversation' || existingConversation.needsTitleGeneration) {
                         this.generateTitleFromContent(existingConversation);
                     }
                     this.saveToStorage();
-                    this.debugLog('Updated existing conversation', { id: this.currentConversationId });
+                    this.debugLog('Updated existing conversation', { 
+                        id: this.currentConversationId,
+                        forceUpdate: forceUpdate,
+                        messageCount: this.app.chatHistory.length
+                    });
                     return;
                 }
                 return;
             }
         }
+        
         const firstUserMessage = this.app.chatHistory.find(m => m.role === 'user');
         let title = 'New Conversation';
         if (firstUserMessage) {

@@ -464,6 +464,32 @@ header h1 {
     transition: transform 0.3s ease, opacity 0.3s ease;
 }
 
+@keyframes fadeOut {
+    from {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+}
+
+@keyframes messageIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.animate-in {
+    animation: messageIn 0.3s ease-out forwards;
+}
+
 .message-content {
     padding: 16px 20px;
     border-radius: var(--border-radius);
@@ -471,33 +497,26 @@ header h1 {
     position: relative;
     overflow: hidden;
     transform-origin: center bottom;
+    width: 100%;
 }
 
 .user-message {
-    background: var(--gradient-message-bot);
+    background: transparent;
     color: var(--user-msg-color);
     align-self: flex-end;
-    border-radius: var(--border-radius) var(--border-radius) 0 var(--border-radius);
     margin-left: auto;
     transform-origin: bottom right;
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
     position: relative;
     overflow: visible;
+}
+
+.user-message .message-content {
+    background: var(--gradient-message-bot);
+    border-radius: var(--border-radius) var(--border-radius) 0 var(--border-radius);
     border-right: 3px solid var(--primary-color);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
-}
-
-.user-message::after {
-    content: '';
-    position: absolute;
-    right: -3px;
-    top: 0;
-    width: 3px;
-    height: 100%;
-   
-    border-radius: 0 var(--border-radius) var(--border-radius) 0;
-    opacity: 0.9;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
 }
 
 .user-text {
@@ -516,7 +535,7 @@ header h1 {
     to { opacity: 1; }
 }
 
-[data-theme="light"] .user-message {
+[data-theme="light"] .user-message .message-content {
     background: var(--gradient-message-bot);
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08),
                 0 2px 10px rgba(var(--text-accent-rgb), 0.05);
@@ -544,16 +563,51 @@ header h1 {
     z-index: 5;
 }
 
-.user-message:hover .edit-message-button {
+.delete-message-button {
+    position: absolute;
+    left: -80px;
+    top: 50%;
+    transform: translateY(-50%) scale(0.85);
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--background-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    opacity: 0;
+    transition: all 0.3s var(--animation-curve);
+    color: #ff4444;
+    border: 1px solid rgba(255, 68, 68, 0.3);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    z-index: 5;
+}
+
+.user-message:hover .edit-message-button,
+.user-message:hover .delete-message-button {
     opacity: 1;
     transform: translateY(-50%) scale(1);
+}
+
+.user-message:hover .edit-message-button {
     left: -45px;
+}
+
+.user-message:hover .delete-message-button {
+    left: -85px;
 }
 
 .edit-message-button:hover {
     background: rgba(var(--text-accent-rgb), 0.1);
     transform: translateY(-50%) scale(1.1) !important;
     box-shadow: 0 6px 15px rgba(0, 0, 0, 0.25);
+}
+
+.delete-message-button:hover {
+    background: rgba(255, 68, 68, 0.1);
+    transform: translateY(-50%) scale(1.1) !important;
+    box-shadow: 0 6px 15px rgba(255, 68, 68, 0.25);
 }
 
 .edit-message-input {
@@ -687,50 +741,6 @@ header h1 {
         opacity: 1;
         transform: scale(1);
     }
-}
-
-.animate-in {
-    animation: messageIn 0.5s var(--animation-pop) forwards;
-}
-
-@keyframes messageIn {
-    from {
-        opacity: 0;
-        transform: translateY(20px) scale(0.95);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-    }
-}
-
-.regenerating-response {
-    position: relative;
-    opacity: 0.6;
-}
-
-.regenerating-response::before {
-    content: 'Regenerating...';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(0, 0, 0, 0.4);
-    color: var(--text-normal);
-    font-size: 16px;
-    border-radius: var(--border-radius);
-    backdrop-filter: blur(2px);
-    -webkit-backdrop-filter: blur(2px);
-    animation: pulseOpacity 1.5s infinite alternate ease-in-out;
-}
-
-@keyframes pulseOpacity {
-    0% { opacity: 0.6; }
-    100% { opacity: 0.9; }
 }
 
 /* USER INPUT AREA */
@@ -1988,4 +1998,177 @@ input:checked + .slider:before {
 
 * {
     -webkit-tap-highlight-color: transparent;
+}
+
+[data-theme="light"] .user-message .message-content {
+    background: var(--gradient-message-bot);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08),
+                0 2px 10px rgba(var(--text-accent-rgb), 0.05);
+    border: 1px solid rgba(var(--text-accent-rgb), 0.12);
+}
+
+.regenerating-response {
+    position: relative;
+    opacity: 0.6;
+}
+
+.regenerating-response::before {
+    content: 'Regenerating...';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.4);
+    color: var(--text-normal);
+    font-size: 16px;
+    border-radius: var(--border-radius);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    animation: pulseOpacity 1.5s infinite alternate ease-in-out;
+}
+
+@keyframes pulseOpacity {
+    0% { opacity: 0.6; }
+    100% { opacity: 0.9; }
+}
+
+.ai-message:hover .edit-message-button,
+.ai-message:hover .delete-message-button,
+.ai-message:hover .regenerate-message-button {
+    opacity: 1;
+    transform: translateY(-50%) scale(1);
+}
+
+.regenerate-message-button {
+    position: absolute;
+    right: -40px;
+    top: 50%;
+    transform: translateY(-50%) scale(0.85);
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--background-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    opacity: 0;
+    transition: all 0.3s var(--animation-curve);
+    color: var(--primary-color);
+    border: 1px solid rgba(var(--text-accent-rgb), 0.3);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    z-index: 5;
+}
+
+.regenerate-message-button:hover {
+    background: rgba(var(--text-accent-rgb), 0.1);
+    transform: translateY(-50%) scale(1.1) !important;
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.25);
+}
+
+.ai-message .delete-message-button {
+    position: absolute;
+    right: -80px;
+    left: auto;
+    top: 50%;
+    transform: translateY(-50%) scale(0.85);
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--background-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    opacity: 0;
+    transition: all 0.3s var(--animation-curve);
+    color: #ff4444;
+    border: 1px solid rgba(255, 68, 68, 0.3);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    z-index: 5;
+}
+
+.ai-message:hover .regenerate-message-button {
+    right: -45px;
+}
+
+.ai-message:hover .delete-message-button {
+    right: -85px;
+}
+
+.ai-message .regenerate-message-button svg,
+.ai-message .delete-message-button svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* AI message buttons */
+.ai-message .delete-message-button {
+    position: absolute;
+    right: -85px;
+    top: 50%;
+    transform: translateY(-50%);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    cursor: pointer;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    border: 1px solid #e74c3c;
+    left: auto;
+}
+
+.ai-message .regenerate-message-button {
+    position: absolute;
+    right: -45px;
+    top: 50%;
+    transform: translateY(-50%);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    cursor: pointer;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    border: 1px solid var(--primary-color);
+}
+
+.ai-message .edit-message-button {
+    position: absolute;
+    right: -125px;
+    top: 50%;
+    transform: translateY(-50%);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    cursor: pointer;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    border: 1px solid var(--secondary-color);
+    left: auto;
+}
+
+.ai-message:hover .delete-message-button,
+.ai-message:hover .regenerate-message-button,
+.ai-message:hover .edit-message-button {
+    opacity: 0.7;
+}
+
+.ai-message .delete-message-button:hover,
+.ai-message .regenerate-message-button:hover,
+.ai-message .edit-message-button:hover {
+    opacity: 1;
+    background-color: rgba(255, 255, 255, 0.1);
 }

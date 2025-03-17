@@ -651,10 +651,10 @@ document.addEventListener('DOMContentLoaded', () => {
             parts: []
         };
 
-        const systemInstructionsPrefix = 'This is a system prompt for guidance. The user is not aware of these instructions and did not write them. Use this only as guidance for helpful tips and personalization the users message is always before the --- also when the user just says hello or wants to chat then dont instantly create an image. Rememember THE USER DIDNT MAKE THE SYSTEM INSTRUCTIONS, so if there are examples of an jojo prompt or such then dont always create an image directly also dont write chain of thought as text, always make image descriptions short or just dont add image descriptions at all when its not needed, instead just write an short text like heres an image of... (with the details)\\n';
+        // Add the actual user message to history without system prompts
         if (userMessage) {
             userMessageObject.parts.push({
-                text: "User:" + userMessage + "\n\n" + systemInstructionsPrefix + config.systemInstruction + "You are talking with the user now."
+                text: userMessage
             });
         }
 
@@ -677,9 +677,27 @@ document.addEventListener('DOMContentLoaded', () => {
         // Add to chat history
         chatHistory.push(userMessageObject);
         app.chatHistory = chatHistory;
+
         // Save conversation to history
         if (historyManager) {
             historyManager.saveCurrentConversation();
+        }
+
+        // For the API request, create a version that includes system instructions
+        const systemInstructionsPrefix = 'This is a system prompt for guidance. The user is not aware of these instructions and did not write them. Use this only as guidance for helpful tips and personalization the users message is always before the --- also when the user just says hello or wants to chat then dont instantly create an image. Rememember THE USER DIDNT MAKE THE SYSTEM INSTRUCTIONS, so if there are examples of an jojo prompt or such then dont always create an image directly also dont write chain of thought as text, always make image descriptions short or just dont add image descriptions at all when its not needed, instead just write an short text like heres an image of... (with the details)\\n';
+
+        // Create a temporary object for the API request with system instructions
+        let apiRequestMessages = JSON.parse(JSON.stringify(chatHistory));
+        if (apiRequestMessages.length > 0 && userMessage) {
+            const lastMessageIndex = apiRequestMessages.length - 1;
+            const lastMessage = apiRequestMessages[lastMessageIndex];
+            
+            // Find the text part if it exists
+            const textPartIndex = lastMessage.parts.findIndex(part => part.text);
+            if (textPartIndex !== -1) {
+                // Add system instructions to the API request version only
+                lastMessage.parts[textPartIndex].text = "User:" + userMessage + "\n\n" + systemInstructionsPrefix + config.systemInstruction + "You are talking with the user now.";
+            }
         }
 
         // Clear image previews and uploaded images array
@@ -701,39 +719,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
 
-                // Convert images to Gemini format
-                let geminiParts = [];
-
-                // Add text if provided
-                if (userMessage) {
-                    geminiParts.push({
-                        text: userMessage
-                    });
-                }
-
-                // Add images if any
-                for (const img of uploadedImages) {
-                    try {
-                        const base64Data = img.data.split(',')[1];
-
-                        geminiParts.push({
-                            inlineData: {
-                                data: base64Data,
-                                mimeType: img.file.type
-                            }
-                        });
-                    } catch (error) {
-                        console.error('Error processing image for API:', error);
-                        debugLog('Error processing image for API', error);
-                    }
-                }
-
                 // Send message to Gemini
                 debugLog('Sending request to Gemini API...');
 
-                // Create request with chat history
+                // Create request with modified messages that include system instructions
                 const result = await model.generateContent({
-                    contents: chatHistory,
+                    contents: apiRequestMessages,
                     generationConfig: {
                         temperature: config.temperature,
                         topP: 0.95,
@@ -771,43 +762,26 @@ document.addEventListener('DOMContentLoaded', () => {
                                     }
                                 }
 
-                                // Add to chat history
+                                // Update chat history with the new response
                                 chatHistory.push({
                                     role: "model",
                                     parts: candidate.content.parts
                                 });
 
-                                // Save conversation
-                                if (historyManager) {
-                                    historyManager.saveCurrentConversation();
-                                }
-
-                                // Display response with any images
-                                displayAIResponse(responseText, responseParts);
-                            } else {
-                                // Fall back to just text
-                                appendMarkdownMessage(responseText, 'ai-message');
-
-                                chatHistory.push({
-                                    role: "model",
-                                    parts: [{ text: responseText }]
+                                // Log the update to chat history
+                                debugLog('Updated chat history after regeneration', {
+                                    oldLength: chatHistory.length - 1,
+                                    newLength: chatHistory.length,
+                                    addedResponse: true
                                 });
 
+                                // Save conversation to history
                                 if (historyManager) {
                                     historyManager.saveCurrentConversation();
                                 }
-                            }
-                        } else {
-                            responseText = result.response.text();
-                            appendMarkdownMessage(responseText, 'ai-message');
 
-                            chatHistory.push({
-                                role: "model",
-                                parts: [{ text: responseText }]
-                            });
-
-                            if (historyManager) {
-                                historyManager.saveCurrentConversation();
+                                // Display the new response
+                                displayAIResponse(responseText, responseParts);
                             }
                         }
                     }
@@ -927,6 +901,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
+        // Add delete and regenerate buttons to AI message
+        addAIMessageButtons(messageDiv);
+
         // Add GIF creator button if the message has at least one image
         const imageCount = messageContent.querySelectorAll('.ai-generated-image').length;
         if (imageCount >= 1) {
@@ -941,7 +918,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }, 100);
         }
 
-        // Add edit buttons to the most recent user message that doesn't have one
+        // Add edit and delete buttons to the most recent user message that doesn't have one
         const userMessages = document.querySelectorAll('.user-message');
         if (userMessages.length > 0) {
             const lastUserMessage = userMessages[userMessages.length - 1];
@@ -1080,7 +1057,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Reset chat history if requested
         if (resetHistory) {
+            // Store the current conversation ID before resetting
+            const currentId = historyManager ? historyManager.currentConversationId : null;
+            
+            // Reset chat history array
             chatHistory = [];
+
+            // Also reset conversation ID in history manager
+            if (historyManager) {
+                // IMPORTANT: Don't create a new empty conversation here, just null out the ID
+                historyManager.currentConversationId = null;
+                
+                // DON'T save current conversation here as it would create an empty chat
+                // historyManager.saveCurrentConversation();
+            }
 
             // Reset chat session when clearing history
             if (model) {
@@ -1095,6 +1085,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 });
             }
+
+            debugLog('Chat cleared completely', { 
+                historyLength: chatHistory.length,
+                previousConversationId: currentId,
+                currentConversationId: historyManager ? historyManager.currentConversationId : null
+            });
         }
 
         // Add welcome message
@@ -1228,7 +1224,7 @@ document.addEventListener('DOMContentLoaded', () => {
             let nextElement = messageElement.nextElementSibling;
 
             // Collect all AI responses until the next user message
-            while (nextElement && nextElement.classList.contains('ai-message')) {
+            while (nextElement) {
                 messagesToRegenerate.push(nextElement);
                 nextElement = nextElement.nextElementSibling;
             }
@@ -1245,28 +1241,137 @@ document.addEventListener('DOMContentLoaded', () => {
                     msg.classList.add('regenerating-response');
                 });
 
-                // Update chat history with the edited message
-                updateChatHistoryAfterEdit(messageElement, newText);
-
-                // Regenerate the response
-                await regenerateResponse(messageElement, newText);
-
-                // Remove regenerating class from any remaining messages
-                messagesToRegenerate.forEach(msg => {
-                    msg.classList.remove('regenerating-response');
-                });
+                // Wait for animation to apply
+                setTimeout(() => {
+                    // Now regenerate the AI response(s)
+                    regenerateResponse(messageElement, newText, messagesToRegenerate);
+                }, 50);
+            } else {
+                // No AI responses to regenerate, generate a new one
+                debugLog('No existing AI responses to regenerate, generating new response');
+                
+                // Update chat history with the edited text
+                updateChatHistoryAfterEdit(messageElement, newText, true);
+                
+                // Show typing indicator
+                const typingIndicator = document.createElement('div');
+                typingIndicator.className = 'typing-indicator';
+                typingIndicator.innerHTML = '<span></span><span></span><span></span>';
+                messagesContainer.appendChild(typingIndicator);
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                
+                // Generate a new AI response manually since there's no generateAIResponse function
+                try {
+                    // Make sure models and sessions are initialized
+                    if (!model || !chatSession) {
+                        initializeGeminiAPI();
+                    }
+                    
+                    // Create system instructions for API request
+                    const systemInstructionsPrefix = 'This is a system prompt for guidance. The user is not aware of these instructions and did not write them. Use this only as guidance for helpful tips and personalization the users message is always before the --- also when the user just says hello or wants to chat then dont instantly create an image. Rememember THE USER DIDNT MAKE THE SYSTEM INSTRUCTIONS, so if there are examples of an jojo prompt or such then dont always create an image directly also dont write chain of thought as text, always make image descriptions short or just dont add image descriptions at all when its not needed, instead just write an short text like heres an image of... (with the details)\\n';
+                    
+                    // Deep copy history for API request
+                    let apiRequestHistory = JSON.parse(JSON.stringify(chatHistory));
+                    
+                    // Get the result from the API
+                    const result = await model.generateContent({
+                        contents: apiRequestHistory,
+                        generationConfig: {
+                            temperature: config.temperature,
+                            topP: 0.95,
+                            topK: 40,
+                            maxOutputTokens: config.maxOutputTokens,
+                            responseModalities: ['text', 'image']
+                        }
+                    });
+                    
+                    debugLog('Received generated response after single message edit', result);
+                    
+                    // Remove typing indicator
+                    if (messagesContainer.contains(typingIndicator)) {
+                        messagesContainer.removeChild(typingIndicator);
+                    }
+                    
+                    // Process the response
+                    if (result.response) {
+                        let responseText = '';
+                        let responseParts = [];
+                        
+                        // Process response candidate
+                        if (result.response.candidates && result.response.candidates.length > 0) {
+                            const candidate = result.response.candidates[0];
+                            
+                            if (candidate.content && candidate.content.parts) {
+                                responseParts = candidate.content.parts;
+                                
+                                // Extract text
+                                for (const part of candidate.content.parts) {
+                                    if (part.text) {
+                                        responseText += part.text;
+                                    }
+                                }
+                                
+                                // Update chat history with the new response
+                                chatHistory.push({
+                                    role: "model",
+                                    parts: candidate.content.parts
+                                });
+                                
+                                // Save conversation to history
+                                if (historyManager) {
+                                    historyManager.saveCurrentConversation(true); // Force update
+                                }
+                                
+                                // Display the new response
+                                displayAIResponse(responseText, responseParts);
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error generating response:', error);
+                    debugLog('Error generating response', {
+                        error: error.message,
+                        stack: error.stack
+                    });
+                    
+                    // Remove typing indicator if it exists
+                    if (messagesContainer.contains(typingIndicator)) {
+                        messagesContainer.removeChild(typingIndicator);
+                    }
+                    
+                    showError('Failed to get a response. ' + error.message);
+                }
             }
         });
     }
 
-    // Function to add edit button to user messages
+    // Function to add edit and delete buttons to user messages
     function addEditButton(messageElement, messageText) {
         // Only add to user messages
         if (!messageElement.classList.contains('user-message')) return;
 
-        // Check if button already exists
-        if (messageElement.querySelector('.edit-message-button')) return;
+        // Check if buttons already exist
+        if (messageElement.querySelector('.edit-message-button') || messageElement.querySelector('.delete-message-button')) return;
 
+        // Create delete button
+        const deleteButton = document.createElement('div');
+        deleteButton.className = 'delete-message-button';
+        deleteButton.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                <line x1="10" y1="11" x2="10" y2="17"></line>
+                <line x1="14" y1="11" x2="14" y2="17"></line>
+            </svg>
+        `;
+        deleteButton.setAttribute('aria-label', 'Delete message');
+        deleteButton.setAttribute('title', 'Delete message');
+
+        deleteButton.addEventListener('click', () => {
+            handleDeleteMessage(messageElement);
+        });
+
+        // Create edit button
         const editButton = document.createElement('div');
         editButton.className = 'edit-message-button';
         editButton.innerHTML = `
@@ -1283,11 +1388,124 @@ document.addEventListener('DOMContentLoaded', () => {
             handleEditMessage(messageElement, currentText);
         });
 
+        messageElement.appendChild(deleteButton);
         messageElement.appendChild(editButton);
     }
 
+    // Helper function to find message index in chat history
+    function findMessageIndex(messageElement) {
+        const messagesContainer = document.getElementById('messages-container');
+        const userMessages = Array.from(messagesContainer.querySelectorAll('.user-message'));
+        const messageIndex = userMessages.indexOf(messageElement);
+
+        debugLog('Finding message index', {
+            userMessageCount: userMessages.length,
+            clickedMessageIndex: messageIndex,
+            totalHistoryLength: chatHistory.length
+        });
+
+        if (messageIndex !== -1 && chatHistory.length > 0) {
+            // Find the corresponding user message in chat history
+            let historyIndex = -1;
+            let userMessageCount = 0;
+
+            for (let i = 0; i < chatHistory.length; i++) {
+                if (chatHistory[i].role === 'user') {
+                    if (userMessageCount === messageIndex) {
+                        historyIndex = i;
+                        break;
+                    }
+                    userMessageCount++;
+                }
+            }
+
+            debugLog('Found message in history', {
+                userMessageIndex: messageIndex,
+                correspondingHistoryIndex: historyIndex,
+                role: historyIndex >= 0 ? chatHistory[historyIndex].role : 'unknown'
+            });
+
+            return historyIndex;
+        }
+        
+        debugLog('Message not found in user messages', {
+            elementClassList: messageElement.classList.toString()
+        });
+        return -1;
+    }
+
+    // Function to handle message deletion
+    function handleDeleteMessage(messageElement) {
+        // First find the index of this message in our history
+        const messageIndex = findMessageIndex(messageElement);
+        if (messageIndex === -1) {
+            debugLog('Message not found in history', { messageElement });
+            return;
+        }
+
+        // Remove the message AND ALL SUBSEQUENT MESSAGES from history
+        const historyIndex = messageIndex;
+        
+        // Store the original history length to log how many messages we'll be removing
+        const originalLength = chatHistory.length;
+        
+        // The critical fix: truncate the history rather than just removing one message
+        chatHistory = chatHistory.slice(0, historyIndex);
+        
+        // Log exactly how many messages were removed
+        const messagesRemoved = originalLength - chatHistory.length;
+        
+        // Add fading out animation
+        messageElement.classList.add('deleting');
+
+        debugLog('Deleting message and all subsequent content', {
+            messageIndex,
+            historyIndex,
+            remainingMessages: chatHistory.length,
+            messagesRemoved: messagesRemoved
+        });
+
+        // Wait for animation to complete before removing elements
+        setTimeout(() => {
+            let elementToRemove = messageElement;
+            while (elementToRemove) {
+                const temp = elementToRemove;
+                elementToRemove = elementToRemove.nextElementSibling;
+                if (messagesContainer.contains(temp)) {
+                    messagesContainer.removeChild(temp);
+                }
+            }
+
+            // If there are no messages left, clear the chat completely
+            if (chatHistory.length === 0) {
+                debugLog('No messages left, clearing chat completely and removing from history');
+                
+                // IMPORTANT: Save the conversation ID before clearing
+                const currentId = historyManager ? historyManager.currentConversationId : null;
+                
+                // Clear the chat
+                clearChat(true);
+                
+                // Delete this conversation from history completely
+                if (historyManager && currentId) {
+                    historyManager.deleteConversationById(currentId);
+                    debugLog('Deleted empty conversation from history DB', { deletedId: currentId });
+                }
+            } else {
+                // Save the updated conversation with FORCE parameter to ensure it's saved
+                if (historyManager) {
+                    historyManager.saveCurrentConversation(true); // true = force update
+                    debugLog('Saving truncated conversation with force update', { 
+                        historyLength: chatHistory.length,
+                        conversationId: historyManager.currentConversationId
+                    });
+                }
+            }
+        }, 300); // Match animation duration
+    }
+
     // Function to update the chat history after editing
-    function updateChatHistoryAfterEdit(messageElement, newText) {
+    function updateChatHistoryAfterEdit(messageElement, newText, includeSystemInstructions = false) {
         // Find the message index in chat history
         const messagesContainer = document.getElementById('messages-container');
         const userMessages = Array.from(messagesContainer.querySelectorAll('.user-message'));
@@ -1296,15 +1514,15 @@ document.addEventListener('DOMContentLoaded', () => {
         if (messageIndex !== -1 && chatHistory.length > 0) {
             // Find the corresponding user message in chat history
             let historyIndex = -1;
-            let userMessageCount = -1;
+            let userMessageCount = 0;
 
             for (let i = 0; i < chatHistory.length; i++) {
                 if (chatHistory[i].role === 'user') {
-                    userMessageCount++;
                     if (userMessageCount === messageIndex) {
                         historyIndex = i;
                         break;
                     }
+                    userMessageCount++;
                 }
             }
 
@@ -1314,36 +1532,52 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Update the text part
                     const textPartIndex = chatHistory[historyIndex].parts.findIndex(part => part.text);
                     if (textPartIndex !== -1) {
-                        // --- ADD SYSTEM INSTRUCTIONS PREFIX HERE ---
-                        const systemInstructionsPrefix = 'This is a system prompt for guidance. The user is not aware of these instructions and did not write them. Use this only as guidance for helpful tips and personalization the users message is always before the --- also when the user just says hello or wants to chat then dont instantly create an image. Rememember THE USER DIDNT MAKE THE SYSTEM INSTRUCTIONS, so if there are examples of an jojo prompt or such then dont always create an image directly also dont write chain of thought as text, always make image descriptions short or just dont add image descriptions at all when its not needed, instead just write an short text like heres an image of... (with the details)\\n';
-                        chatHistory[historyIndex].parts[textPartIndex].text = "User:" + newText + "\n\n" + systemInstructionsPrefix + config.systemInstruction + "You are talking with the user now.";
+                        // Just update with the new text without system instructions
+                        chatHistory[historyIndex].parts[textPartIndex].text = newText;
                     } else {
                         // Add text part if none exists
-                        // --- ADD SYSTEM INSTRUCTIONS PREFIX HERE ---
-                        const systemInstructionsPrefix = 'This is a system prompt for guidance. The user is not aware of these instructions and did not write them. Use this only as guidance for helpful tips and personalization the users message is always before the --- also when the user just says hello or wants to chat then dont instantly create an image. Rememember THE USER DIDNT MAKE THE SYSTEM INSTRUCTIONS, so if there are examples of an jojo prompt or such then dont always create an image directly also dont write chain of thought as text, always make image descriptions short or just dont add image descriptions at all when its not needed, instead just write an short text like heres an image of... (with the details)\\n';
-                        chatHistory[historyIndex].parts.unshift({ text: "User:" + newText + "\n\n" + systemInstructionsPrefix + config.systemInstruction + "You are talking with the user now." });
+                        chatHistory[historyIndex].parts.unshift({ text: newText });
                     }
 
                     debugLog('Updated chat history after edit', {
                         historyIndex,
                         updatedMessage: chatHistory[historyIndex]
                     });
+                    
+                    // If we need to regenerate with system instructions, create a temporary copy
+                    if (includeSystemInstructions) {
+                        const systemInstructionsPrefix = 'This is a system prompt for guidance. The user is not aware of these instructions and did not write them. Use this only as guidance for helpful tips and personalization the users message is always before the --- also when the user just says hello or wants to chat then dont instantly create an image. Rememember THE USER DIDNT MAKE THE SYSTEM INSTRUCTIONS, so if there are examples of an jojo prompt or such then dont always create an image directly also dont write chain of thought as text, always make image descriptions short or just dont add image descriptions at all when its not needed, instead just write an short text like heres an image of... (with the details)\\n';
+                        
+                        // Create a temporary copy of chat history for API request
+                        let apiRequestHistory = JSON.parse(JSON.stringify(chatHistory));
+                        
+                        // Add system instructions to the copy
+                        const tempTextPartIndex = apiRequestHistory[historyIndex].parts.findIndex(part => part.text);
+                        if (tempTextPartIndex !== -1) {
+                            apiRequestHistory[historyIndex].parts[tempTextPartIndex].text = "User:" + newText + "\n\n" + systemInstructionsPrefix + config.systemInstruction + "You are talking with the user now.";
+                        }
+                        
+                        return apiRequestHistory;
+                    }
                 }
             }
         }
     }
 
     // Function to regenerate the AI response
-    async function regenerateResponse(messageElement, editedText) {
+    async function regenerateResponse(messageElement, editedText, messagesToRegenerate = []) {
         try {
-            // Find all AI messages that need to be removed
-            let nextElement = messageElement.nextElementSibling;
-            let messagesToRemove = [];
-
-            // Collect all messages after the edited message
+            // Use the provided messagesToRegenerate if available, otherwise find them
+            let messagesToRemove = messagesToRegenerate.length > 0 ? 
+                messagesToRegenerate : [];
+                
+            // If no messages were provided, collect them now (fallback)
+            if (messagesToRemove.length === 0) {
+                let nextElement = messageElement.nextElementSibling;
             while (nextElement) {
                 messagesToRemove.push(nextElement);
                 nextElement = nextElement.nextElementSibling;
+                }
             }
 
             // Find the history index up to this user message
@@ -1352,7 +1586,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const messageIndex = allMessages.indexOf(messageElement);
 
             // Debug log original history length
-            debugLog('Original chat history length', { length: chatHistory.length });
+            debugLog('Original chat history length', { 
+                length: chatHistory.length,
+                messagesToRemoveCount: messagesToRemove.length
+            });
 
             // Find the user message index in chat history
             let userMessageCount = 0;
@@ -1383,7 +1620,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
 
                 // Remove all messages after the edited message from the DOM
-                messagesToRemove.forEach(msg => messagesContainer.removeChild(msg));
+                messagesToRemove.forEach(msg => {
+                    if (messagesContainer.contains(msg)) {
+                        messagesContainer.removeChild(msg);
+                    }
+                });
 
                 // Show typing indicator
                 const typingIndicator = document.createElement('div');
@@ -1401,8 +1642,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Generate the new response
                     debugLog('Generating new response after edit', { historyLength: chatHistory.length });
 
+                    // Update chat history with the edited message
+                    const apiRequestHistory = updateChatHistoryAfterEdit(messageElement, editedText, true);
+
+                    // Generate the new response
                     const result = await model.generateContent({
-                        contents: chatHistory,
+                        contents: apiRequestHistory || chatHistory,
                         generationConfig: {
                             temperature: config.temperature,
                             topP: 0.95,
@@ -1503,19 +1748,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Process parts for text and images
                 message.parts.forEach(part => {
                     if (part.text) {
-                        // Strip out system instruction prefix for display in history
-                        let displayText = part.text;
-                        if (displayText.includes(DEFAULT_SYSTEM_INSTRUCTION)) {
-                            displayText = displayText.split("\n\n" + DEFAULT_SYSTEM_INSTRUCTION)[0];
-                        }
-                        // Also extract just the user portion if it starts with "User:"
-                        if (displayText.startsWith("User:")) {
-                            displayText = displayText.substring(5);
-                        }
-
+                        // Since we now store just the user's text without system prompts,
+                        // no need to strip out system instructions
                         const textDiv = document.createElement('div');
                         textDiv.className = 'user-text';
-                        textDiv.textContent = displayText;
+                        textDiv.textContent = part.text;
                         messageContent.appendChild(textDiv);
                     } else if (part.inlineData) {
                         const imgContainer = document.createElement('div');
@@ -1543,15 +1780,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (message.parts && message.parts.length > 0) {
                         const textPart = message.parts.find(p => p.text);
                         if (textPart) {
-                            // Remove system instructions for the edit button too
-                            let editText = textPart.text;
-                            if (editText.includes(DEFAULT_SYSTEM_INSTRUCTION)) {
-                                editText = editText.split("\n\n" + DEFAULT_SYSTEM_INSTRUCTION)[0];
-                            }
-                            if (editText.startsWith("User:")) {
-                                editText = editText.substring(5);
-                            }
-                            messageText = editText;
+                            // Since we now store message text without system instructions,
+                            // we should have clean text already
+                            messageText = textPart.text;
                         }
                     }
 
@@ -1597,6 +1828,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 messageDiv.appendChild(messageContent);
                 messagesContainer.appendChild(messageDiv);
+                
+                // Add delete and regenerate buttons to the AI message
+                addAIMessageButtons(messageDiv);
             }
         });
 
@@ -1632,7 +1866,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const app = {
         clearChat,
         renderStoredMessages,
-        chatHistory,
+        get chatHistory() { return chatHistory; },
+        set chatHistory(value) { chatHistory = value; },
         debugLog,
         config,
         model: model,
@@ -1710,8 +1945,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Reset current conversation ID if history manager exists
         if (historyManager) {
+            // IMPORTANT: This conversation shouldn't be saved
             historyManager.currentConversationId = null;
-            debugLog('Started new chat from button');
+            
+            // Force update UI if history panel is open
+            if (historyManager.historyPanel && historyManager.historyPanel.classList.contains('open')) {
+                historyManager.renderConversationsList();
+            }
+            
+            debugLog('Started new chat from button', { 
+                conversationId: null,
+                historyLength: chatHistory.length
+            });
         }
     }
 
@@ -1792,4 +2037,529 @@ document.addEventListener('DOMContentLoaded', () => {
         // Show feedback that it was reset
         showMessage('System instructions reset to default!', 'system-message');
     });
+
+    // Add AI message buttons (delete, regenerate, edit)
+    function addAIMessageButtons(messageElement) {
+        // Only add to AI messages
+        if (!messageElement.classList.contains('ai-message')) return;
+        
+        // Check if buttons already exist
+        if (messageElement.querySelector('.delete-message-button') || 
+            messageElement.querySelector('.regenerate-message-button') ||
+            messageElement.querySelector('.edit-message-button')) return;
+
+        // Create delete button
+        const deleteButton = document.createElement('div');
+        deleteButton.className = 'delete-message-button';
+        deleteButton.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                <line x1="10" y1="11" x2="10" y2="17"></line>
+                <line x1="14" y1="11" x2="14" y2="17"></line>
+            </svg>
+        `;
+        deleteButton.setAttribute('aria-label', 'Delete message');
+        deleteButton.setAttribute('title', 'Delete message');
+
+        deleteButton.addEventListener('click', () => {
+            handleDeleteAIMessage(messageElement);
+        });
+
+        // Create regenerate button
+        const regenerateButton = document.createElement('div');
+        regenerateButton.className = 'regenerate-message-button';
+        regenerateButton.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 2v6h6"></path>
+                <path d="M21 12A9 9 0 0 0 6 5.3L3 8"></path>
+                <path d="M21 22v-6h-6"></path>
+                <path d="M3 12a9 9 0 0 0 15 6.7l3-2.7"></path>
+            </svg>
+        `;
+        regenerateButton.setAttribute('aria-label', 'Regenerate response');
+        regenerateButton.setAttribute('title', 'Regenerate response');
+
+        regenerateButton.addEventListener('click', () => {
+            handleRegenerateAIMessage(messageElement);
+        });
+
+        // Create edit button for AI messages
+        const editButton = document.createElement('div');
+        editButton.className = 'edit-message-button';
+        editButton.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
+            </svg>
+        `;
+        editButton.setAttribute('aria-label', 'Edit message');
+        editButton.setAttribute('title', 'Edit message');
+
+        editButton.addEventListener('click', () => {
+            handleEditAIMessage(messageElement);
+        });
+
+        // Important: Add all buttons in this specific order
+        // for proper CSS positioning (delete button first, then regenerate, then edit)
+        messageElement.appendChild(deleteButton);
+        messageElement.appendChild(regenerateButton);
+        messageElement.appendChild(editButton);
+        
+        debugLog('Added buttons to AI message', { 
+            deleteButton: !!deleteButton, 
+            regenerateButton: !!regenerateButton,
+            editButton: !!editButton
+        });
+    }
+
+    // Add this function to handle deleting AI messages
+    function handleDeleteAIMessage(messageElement) {
+        // Find the index of this message in our history
+        const messagesContainer = document.getElementById('messages-container');
+        const allMessages = Array.from(messagesContainer.querySelectorAll('.message'));
+        const messageIndex = allMessages.indexOf(messageElement);
+
+        if (messageIndex === -1) {
+            debugLog('AI message not found in DOM', { messageElement });
+            return;
+        }
+
+        // Find the matching message in chat history
+        let historyIndex = -1;
+        let aiMessageCount = 0;
+        let domAIMessageCount = 0;
+
+        // Count AI messages in DOM up to this message
+        for (let i = 0; i <= messageIndex; i++) {
+            if (allMessages[i].classList.contains('ai-message')) {
+                domAIMessageCount++;
+            }
+        }
+
+        // Find the matching AI message in history
+        for (let i = 0; i < chatHistory.length; i++) {
+            if (chatHistory[i].role === 'model') {
+                aiMessageCount++;
+                if (aiMessageCount === domAIMessageCount) {
+                    historyIndex = i;
+                    break;
+                }
+            }
+        }
+
+        if (historyIndex === -1) {
+            debugLog('AI message not found in history', { 
+                domIndex: messageIndex, 
+                aiMessageCount: domAIMessageCount 
+            });
+            return;
+        }
+
+        // Store the original history length to log how many messages we'll be removing
+        const originalLength = chatHistory.length;
+        
+        // Remove just this one AI message
+        chatHistory.splice(historyIndex, 1);
+        
+        // Add fading out animation
+        messageElement.classList.add('deleting');
+
+        debugLog('Deleting AI message', {
+            domIndex: messageIndex,
+            historyIndex: historyIndex,
+            remainingMessages: chatHistory.length
+        });
+
+        // Wait for animation to complete before removing element
+        setTimeout(() => {
+            if (messagesContainer.contains(messageElement)) {
+                messagesContainer.removeChild(messageElement);
+            }
+
+            // Save the updated conversation with FORCE parameter to ensure it's saved
+            if (historyManager) {
+                historyManager.saveCurrentConversation(true); // true = force update
+                debugLog('Saving conversation after AI message deletion', { 
+                    historyLength: chatHistory.length,
+                    conversationId: historyManager.currentConversationId
+                });
+            }
+        }, 300); // Match animation duration
+    }
+
+    // Add this function to handle regenerating AI messages
+    async function handleRegenerateAIMessage(messageElement) {
+        // Find the previous user message that prompted this AI response
+        let prevUserMessage = null;
+        let currentElement = messageElement.previousElementSibling;
+        
+        while (currentElement && !currentElement.classList.contains('user-message')) {
+            currentElement = currentElement.previousElementSibling;
+        }
+        
+        if (!currentElement) {
+            debugLog('Could not find preceding user message', { messageElement });
+            showError('Cannot regenerate - no user message found');
+            return;
+        }
+        
+        prevUserMessage = currentElement;
+        
+        // Get the user message text
+        const userTextElement = prevUserMessage.querySelector('.user-text');
+        if (!userTextElement) {
+            debugLog('User message has no text content', { prevUserMessage });
+            showError('Cannot regenerate - user message has no text');
+            return;
+        }
+        
+        const userMessageText = userTextElement.textContent;
+        
+        // Find the message index in chat history
+        const messagesContainer = document.getElementById('messages-container');
+        const allMessages = Array.from(messagesContainer.querySelectorAll('.message'));
+        const messageIndex = allMessages.indexOf(messageElement);
+        
+        if (messageIndex === -1) {
+            debugLog('AI message not found in DOM', { messageElement });
+            return;
+        }
+        
+        // Find the matching message in chat history
+        let historyIndex = -1;
+        let aiMessageCount = 0;
+        let domAIMessageCount = 0;
+        
+        // Count AI messages in DOM up to this message
+        for (let i = 0; i <= messageIndex; i++) {
+            if (allMessages[i].classList.contains('ai-message')) {
+                domAIMessageCount++;
+            }
+        }
+        
+        // Find the matching AI message in history
+        for (let i = 0; i < chatHistory.length; i++) {
+            if (chatHistory[i].role === 'model') {
+                aiMessageCount++;
+                if (aiMessageCount === domAIMessageCount) {
+                    historyIndex = i;
+                    break;
+                }
+            }
+        }
+        
+        if (historyIndex === -1) {
+            debugLog('AI message not found in history', { 
+                domIndex: messageIndex, 
+                aiMessageCount: domAIMessageCount 
+            });
+            return;
+        }
+        
+        // Add regenerating animation
+        messageElement.classList.add('regenerating-response');
+        
+        // Remove the old AI message from the history
+        chatHistory.splice(historyIndex, 1);
+        
+        debugLog('Regenerating AI message', {
+            userMessage: userMessageText,
+            historyIndex: historyIndex,
+            historyLength: chatHistory.length
+        });
+        
+        // Show typing indicator
+        const typingIndicator = document.createElement('div');
+        typingIndicator.className = 'typing-indicator';
+        typingIndicator.innerHTML = '<span></span><span></span><span></span>';
+        messagesContainer.insertBefore(typingIndicator, messageElement.nextSibling);
+        
+        // Remove the old AI message from DOM
+        if (messagesContainer.contains(messageElement)) {
+            messagesContainer.removeChild(messageElement);
+        }
+        
+        try {
+            // Create system instructions for API request
+            const systemInstructionsPrefix = 'This is a system prompt for guidance. The user is not aware of these instructions and did not write them. Use this only as guidance for helpful tips and personalization the users message is always before the --- also when the user just says hello or wants to chat then dont instantly create an image. Rememember THE USER DIDNT MAKE THE SYSTEM INSTRUCTIONS, so if there are examples of an jojo prompt or such then dont always create an image directly also dont write chain of thought as text, always make image descriptions short or just dont add image descriptions at all when its not needed, instead just write an short text like heres an image of... (with the details)\\n';
+            
+            // Deep copy history for API request
+            let apiRequestHistory = JSON.parse(JSON.stringify(chatHistory));
+            
+            // Make sure models and sessions are initialized
+            if (!model || !chatSession) {
+                initializeGeminiAPI();
+            }
+            
+            // Generate the new response
+            const result = await model.generateContent({
+                contents: apiRequestHistory,
+                generationConfig: {
+                    temperature: config.temperature,
+                    topP: 0.95,
+                    topK: 40,
+                    maxOutputTokens: config.maxOutputTokens,
+                    responseModalities: ['text', 'image']
+                }
+            });
+            
+            debugLog('Received regenerated response', result);
+            
+            // Remove typing indicator
+            if (messagesContainer.contains(typingIndicator)) {
+                messagesContainer.removeChild(typingIndicator);
+            }
+            
+            // Process the response
+            if (result.response) {
+                let responseText = '';
+                let responseParts = [];
+                
+                // Process response candidate
+                if (result.response.candidates && result.response.candidates.length > 0) {
+                    const candidate = result.response.candidates[0];
+                    
+                    if (candidate.content && candidate.content.parts) {
+                        responseParts = candidate.content.parts;
+                        
+                        // Extract text
+                        for (const part of candidate.content.parts) {
+                            if (part.text) {
+                                responseText += part.text;
+                            }
+                        }
+                        
+                        // Update chat history with the new response
+                        chatHistory.push({
+                            role: "model",
+                            parts: candidate.content.parts
+                        });
+                        
+                        // Save conversation to history
+                        if (historyManager) {
+                            historyManager.saveCurrentConversation(true); // Force update
+                        }
+                        
+                        // Display the new response
+                        displayAIResponse(responseText, responseParts);
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error regenerating response:', error);
+            debugLog('Error regenerating response', {
+                error: error.message,
+                stack: error.stack
+            });
+            
+            // Remove typing indicator
+            if (messagesContainer.contains(typingIndicator)) {
+                messagesContainer.removeChild(typingIndicator);
+            }
+            
+            showError('Failed to regenerate response: ' + error.message);
+        }
+    }
+
+    // Add function to handle editing AI messages
+    async function handleEditAIMessage(messageElement) {
+        // Create edit state
+        messageElement.classList.add('editing');
+
+        // Find the message content to edit
+        const messageContent = messageElement.querySelector('.message-content');
+        if (!messageContent) {
+            debugLog('AI message has no content to edit', { messageElement });
+            return;
+        }
+
+        // Store the original content to restore if cancelled
+        const originalContent = messageContent.innerHTML;
+
+        // Extract text content from various possible elements
+        let originalText = '';
+        const textElements = messageContent.querySelectorAll('.text-part');
+        
+        if (textElements.length > 0) {
+            // If we have text-part elements, combine their contents
+            textElements.forEach(el => {
+                originalText += el.textContent + '\n';
+            });
+        } else {
+            // Fallback to direct content
+            originalText = messageContent.textContent;
+        }
+        
+        originalText = originalText.trim();
+
+        // Create edit interface
+        const editContainer = document.createElement('div');
+        editContainer.className = 'edit-container';
+
+        const editInput = document.createElement('textarea');
+        editInput.className = 'edit-message-input';
+        editInput.value = originalText;
+        editInput.style.height = 'auto';
+
+        // Auto-resize textarea
+        setTimeout(() => {
+            editInput.style.height = editInput.scrollHeight + 'px';
+        }, 10);
+
+        editInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = this.scrollHeight + 'px';
+        });
+
+        // Add edit actions
+        const editActions = document.createElement('div');
+        editActions.className = 'edit-actions';
+
+        const saveButton = document.createElement('button');
+        saveButton.className = 'save-edit';
+        saveButton.textContent = 'Save';
+
+        const cancelButton = document.createElement('button');
+        cancelButton.className = 'cancel-edit';
+        cancelButton.textContent = 'Cancel';
+
+        editActions.appendChild(saveButton);
+        editActions.appendChild(cancelButton);
+
+        // Replace the message content with the editor
+        messageContent.innerHTML = '';
+        editContainer.appendChild(editInput);
+        editContainer.appendChild(editActions);
+        messageContent.appendChild(editContainer);
+
+        // Set up cancel button
+        cancelButton.addEventListener('click', () => {
+            messageContent.innerHTML = originalContent;
+            messageElement.classList.remove('editing');
+            
+            // Re-add edit button after cancel
+            if (!messageElement.querySelector('.edit-message-button')) {
+                addAIMessageButtons(messageElement);
+            }
+        });
+
+        // Set up save button
+        saveButton.addEventListener('click', async () => {
+            const newText = editInput.value.trim();
+
+            if (!newText || newText === originalText) {
+                // No changes or empty, just restore
+                messageContent.innerHTML = originalContent;
+                messageElement.classList.remove('editing');
+                
+                // Re-add edit button after no change
+                if (!messageElement.querySelector('.edit-message-button')) {
+                    addAIMessageButtons(messageElement);
+                }
+                return;
+            }
+
+            // Find the message index in chat history
+            const messagesContainer = document.getElementById('messages-container');
+            const allMessages = Array.from(messagesContainer.querySelectorAll('.message'));
+            const messageIndex = allMessages.indexOf(messageElement);
+            
+            if (messageIndex === -1) {
+                debugLog('AI message not found in DOM', { messageElement });
+                messageContent.innerHTML = originalContent;
+                messageElement.classList.remove('editing');
+                return;
+            }
+            
+            // Find the matching message in chat history
+            let historyIndex = -1;
+            let aiMessageCount = 0;
+            let domAIMessageCount = 0;
+            
+            // Count AI messages in DOM up to this message
+            for (let i = 0; i <= messageIndex; i++) {
+                if (allMessages[i].classList.contains('ai-message')) {
+                    domAIMessageCount++;
+                }
+            }
+            
+            // Find the matching AI message in history
+            for (let i = 0; i < chatHistory.length; i++) {
+                if (chatHistory[i].role === 'model') {
+                    aiMessageCount++;
+                    if (aiMessageCount === domAIMessageCount) {
+                        historyIndex = i;
+                        break;
+                    }
+                }
+            }
+            
+            if (historyIndex === -1) {
+                debugLog('AI message not found in history', { 
+                    domIndex: messageIndex, 
+                    aiMessageCount: domAIMessageCount 
+                });
+                messageContent.innerHTML = originalContent;
+                messageElement.classList.remove('editing');
+                return;
+            }
+            
+            // Update the DOM with the edited text
+            messageContent.innerHTML = '';
+            
+            // Create text part div
+            const textDiv = document.createElement('div');
+            textDiv.className = 'text-part';
+            
+            // Apply markdown
+            const marked = window.marked || marked;
+            if (typeof marked === 'function') {
+                textDiv.innerHTML = marked(newText);
+                
+                // Add syntax highlighting
+                if (typeof Prism !== 'undefined') {
+                    Prism.highlightAllUnder(textDiv);
+                }
+            } else {
+                textDiv.textContent = newText;
+            }
+            
+            messageContent.appendChild(textDiv);
+            
+            // Remove editing state
+            messageElement.classList.remove('editing');
+            
+            // Re-add buttons
+            addAIMessageButtons(messageElement);
+            
+            // Update the chat history (only the text part)
+            if (chatHistory[historyIndex] && chatHistory[historyIndex].parts) {
+                // Find the text part in the parts array
+                for (let i = 0; i < chatHistory[historyIndex].parts.length; i++) {
+                    if (chatHistory[historyIndex].parts[i].text !== undefined) {
+                        chatHistory[historyIndex].parts[i].text = newText;
+                        break;
+                    }
+                }
+                
+                // If no text part was found, add one
+                if (!chatHistory[historyIndex].parts.some(part => part.text !== undefined)) {
+                    chatHistory[historyIndex].parts.push({ text: newText });
+                }
+            } else if (chatHistory[historyIndex]) {
+                // Fallback if parts structure is missing
+                chatHistory[historyIndex].parts = [{ text: newText }];
+            }
+            
+            // Save the updated conversation
+            if (historyManager) {
+                historyManager.saveCurrentConversation(true); // Force update
+                
+                debugLog('Saved conversation after AI message edit', { 
+                    historyIndex: historyIndex,
+                    newText: newText.substring(0, 50) + (newText.length > 50 ? '...' : '')
+                });
+            }
+        });
+    }
 });
