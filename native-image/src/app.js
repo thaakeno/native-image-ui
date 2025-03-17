@@ -298,7 +298,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 img.src = imageData;
             };
             reader.readAsDataURL(blob);
-            event.preventDefault(); 
+            event.preventDefault();
         }
     }
 
@@ -372,7 +372,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const currentTheme = document.documentElement.getAttribute('data-theme');
         const newTheme = currentTheme === 'light' ? 'dark' : 'light';
 
-        // Add a transitioning class to the root element 
+        // Add a transitioning class to the root element
         document.documentElement.classList.add('theme-transitioning');
 
         // Apply new theme with a slight delay to allow for smoother transition
@@ -418,8 +418,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     debugCollapseBtn.addEventListener('click', () => {
         debugContent.style.display = debugContent.style.display === 'none' ? 'block' : 'none';
-        debugCollapseBtn.innerHTML = debugContent.style.display === 'none' ? 
-            '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>' : 
+        debugCollapseBtn.innerHTML = debugContent.style.display === 'none' ?
+            '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>' :
             '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>';
     });
 
@@ -651,7 +651,7 @@ document.addEventListener('DOMContentLoaded', () => {
             parts: []
         };
 
-        const systemInstructionsPrefix = 'This is a system prompt for guidance. The user is not aware of these instructions and did not write them. Use this only as guidance for helpful tips and personalization the users message is always before the --- also when the user just says hello or wants to chat then dont instantly create an image. Rememember THE USER DIDNT MAKE THE SYSTEM INSTRUCTIONS, so if there are examples of an jojo prompt or such then dont always create an image directly also dont write chain of thought as text, always make image descriptions short or just dont add image descriptions at all when its not needed, instead just write an short text like heres an image of... (with the details)\n';
+        const systemInstructionsPrefix = 'This is a system prompt for guidance. The user is not aware of these instructions and did not write them. Use this only as guidance for helpful tips and personalization the users message is always before the --- also when the user just says hello or wants to chat then dont instantly create an image. Rememember THE USER DIDNT MAKE THE SYSTEM INSTRUCTIONS, so if there are examples of an jojo prompt or such then dont always create an image directly also dont write chain of thought as text, always make image descriptions short or just dont add image descriptions at all when its not needed, instead just write an short text like heres an image of... (with the details)\\n';
         if (userMessage) {
             userMessageObject.parts.push({
                 text: "User:" + userMessage + "\n\n" + systemInstructionsPrefix + config.systemInstruction + "You are talking with the user now."
@@ -676,7 +676,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Add to chat history
         chatHistory.push(userMessageObject);
-        app.chatHistory = chatHistory; 
+        app.chatHistory = chatHistory;
         // Save conversation to history
         if (historyManager) {
             historyManager.saveCurrentConversation();
@@ -846,8 +846,8 @@ document.addEventListener('DOMContentLoaded', () => {
         messageContent.className = 'message-content';
 
         if (parts && parts.length > 0) {
-            debugLog('Rendering AI response with parts', { 
-                partCount: parts.length, 
+            debugLog('Rendering AI response with parts', {
+                partCount: parts.length,
                 partTypes: parts.map(part => part.text ? 'text' : (part.inlineData ? 'image' : 'unknown'))
             });
 
@@ -1234,10 +1234,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (messagesToRegenerate.length > 0) {
-                debugLog('Regenerating response(s) after edit', { 
-                    originalText, 
-                    newText, 
-                    messageCount: messagesToRegenerate.length 
+                debugLog('Regenerating response(s) after edit', {
+                    originalText,
+                    newText,
+                    messageCount: messagesToRegenerate.length
                 });
 
                 // Mark messages as being regenerated
@@ -1314,14 +1314,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Update the text part
                     const textPartIndex = chatHistory[historyIndex].parts.findIndex(part => part.text);
                     if (textPartIndex !== -1) {
-                        chatHistory[historyIndex].parts[textPartIndex].text = newText;
+                        // --- ADD SYSTEM INSTRUCTIONS PREFIX HERE ---
+                        const systemInstructionsPrefix = 'This is a system prompt for guidance. The user is not aware of these instructions and did not write them. Use this only as guidance for helpful tips and personalization the users message is always before the --- also when the user just says hello or wants to chat then dont instantly create an image. Rememember THE USER DIDNT MAKE THE SYSTEM INSTRUCTIONS, so if there are examples of an jojo prompt or such then dont always create an image directly also dont write chain of thought as text, always make image descriptions short or just dont add image descriptions at all when its not needed, instead just write an short text like heres an image of... (with the details)\\n';
+                        chatHistory[historyIndex].parts[textPartIndex].text = "User:" + newText + "\n\n" + systemInstructionsPrefix + config.systemInstruction + "You are talking with the user now.";
                     } else {
                         // Add text part if none exists
-                        chatHistory[historyIndex].parts.unshift({ text: newText });
+                        // --- ADD SYSTEM INSTRUCTIONS PREFIX HERE ---
+                        const systemInstructionsPrefix = 'This is a system prompt for guidance. The user is not aware of these instructions and did not write them. Use this only as guidance for helpful tips and personalization the users message is always before the --- also when the user just says hello or wants to chat then dont instantly create an image. Rememember THE USER DIDNT MAKE THE SYSTEM INSTRUCTIONS, so if there are examples of an jojo prompt or such then dont always create an image directly also dont write chain of thought as text, always make image descriptions short or just dont add image descriptions at all when its not needed, instead just write an short text like heres an image of... (with the details)\\n';
+                        chatHistory[historyIndex].parts.unshift({ text: "User:" + newText + "\n\n" + systemInstructionsPrefix + config.systemInstruction + "You are talking with the user now." });
                     }
 
-                    debugLog('Updated chat history after edit', { 
-                        historyIndex, 
+                    debugLog('Updated chat history after edit', {
+                        historyIndex,
                         updatedMessage: chatHistory[historyIndex]
                     });
                 }
@@ -1372,8 +1376,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 chatHistory = chatHistory.slice(0, targetUserIndex + 1);
 
                 // Debug log truncated history
-                debugLog('Truncated chat history after edit', { 
-                    originalLength: chatHistory.length, 
+                debugLog('Truncated chat history after edit', {
+                    originalLength: chatHistory.length,
                     truncatedLength: chatHistory.length,
                     targetUserIndex: targetUserIndex
                 });
