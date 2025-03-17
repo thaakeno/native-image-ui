@@ -1273,6 +1273,34 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Deep copy history for API request
                     let apiRequestHistory = JSON.parse(JSON.stringify(chatHistory));
                     
+                    // Find the last user message in the API request history
+                    let lastUserMessageIndex = -1;
+                    for (let i = apiRequestHistory.length - 1; i >= 0; i--) {
+                        if (apiRequestHistory[i].role === 'user') {
+                            lastUserMessageIndex = i;
+                            break;
+                        }
+                    }
+                    
+                    // Add system instructions to the last user message
+                    if (lastUserMessageIndex !== -1) {
+                        const lastUserMsg = apiRequestHistory[lastUserMessageIndex];
+                        const textPartIndex = lastUserMsg.parts.findIndex(part => part.text);
+                        
+                        if (textPartIndex !== -1) {
+                            // Get the original user message text
+                            const originalText = lastUserMsg.parts[textPartIndex].text;
+                            
+                            // Add system instructions to the API request version only
+                            lastUserMsg.parts[textPartIndex].text = "User:" + originalText + "\n\n" + systemInstructionsPrefix + config.systemInstruction + "You are talking with the user now.";
+                            
+                            debugLog('Applied system instructions to user message for regeneration', {
+                                userMessageIndex: lastUserMessageIndex,
+                                originalTextPreview: originalText.substring(0, 30) + (originalText.length > 30 ? '...' : '')
+                            });
+                        }
+                    }
+                    
                     // Get the result from the API
                     const result = await model.generateContent({
                         contents: apiRequestHistory,
@@ -2285,6 +2313,34 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Deep copy history for API request
             let apiRequestHistory = JSON.parse(JSON.stringify(chatHistory));
+            
+            // Find the last user message in the API request history
+            let lastUserMessageIndex = -1;
+            for (let i = apiRequestHistory.length - 1; i >= 0; i--) {
+                if (apiRequestHistory[i].role === 'user') {
+                    lastUserMessageIndex = i;
+                    break;
+                }
+            }
+            
+            // Add system instructions to the last user message
+            if (lastUserMessageIndex !== -1) {
+                const lastUserMsg = apiRequestHistory[lastUserMessageIndex];
+                const textPartIndex = lastUserMsg.parts.findIndex(part => part.text);
+                
+                if (textPartIndex !== -1) {
+                    // Get the original user message text
+                    const originalText = lastUserMsg.parts[textPartIndex].text;
+                    
+                    // Add system instructions to the API request version only
+                    lastUserMsg.parts[textPartIndex].text = "User:" + originalText + "\n\n" + systemInstructionsPrefix + config.systemInstruction + "You are talking with the user now.";
+                    
+                    debugLog('Applied system instructions to user message for regeneration', {
+                        userMessageIndex: lastUserMessageIndex,
+                        originalTextPreview: originalText.substring(0, 30) + (originalText.length > 30 ? '...' : '')
+                    });
+                }
+            }
             
             // Make sure models and sessions are initialized
             if (!model || !chatSession) {
