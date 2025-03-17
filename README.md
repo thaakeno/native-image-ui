@@ -24,10 +24,16 @@ This web application provides a user-friendly interface for interacting with the
 - **Max Output Tokens:** Limit the length of AI-generated text responses.
 - **Theme Switching:** Toggle between dark and light themes for comfortable viewing.
 - **Debug Mode:** Enable a debug panel to view detailed logs and troubleshoot issues.
-
+    
 # **Image Support:**
 ![image](https://github.com/user-attachments/assets/5a651cb6-c8ba-4342-a3af-e5609778dac2)
 
+- **Image Upload:** Upload local image files to include in prompts.
+- **Paste Images:** Paste images directly from the clipboard.
+- **Image Previews:** View previews of uploaded and pasted images before sending.
+- **AI Image Generation:** View AI-generated images directly in the chat interface.
+- **GIF Creation:** Create GIFs from AI-generated images (if multiple images are generated).
+- **Image Viewer:** Enhanced image viewing experience with zoom 
 
 - **Markdown Rendering:** AI responses are rendered in Markdown for rich text formatting.
 - **Edit User Messages:** Edit and resend user messages to refine prompts and regenerate AI responses.
@@ -117,9 +123,6 @@ This web application provides a user-friendly interface for interacting with the
 ## Contributing
 
 [Contributions are welcome! Please feel free to submit pull requests or open issues for any bugs or feature requests.]
-
-
-Version 1.0.2
 
 ## License
 
