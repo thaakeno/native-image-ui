@@ -459,6 +459,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     img.src = imageData;
                 };
                 reader.readAsDataURL(file);
+                imageInput.value = '';
             } else {
                 showError('Only image files are allowed');
             }
