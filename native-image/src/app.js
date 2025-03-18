@@ -812,6 +812,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 10);
     }
 
+
     function displayAIResponse(text, parts) {
         const messageDiv = document.createElement('div');
         messageDiv.className = 'message ai-message animate-in';
@@ -833,93 +834,50 @@ document.addEventListener('DOMContentLoaded', () => {
                     markdownBuffer.appendText(part.text);
                     messageContent.appendChild(textDiv);
                 } else if (part.inlineData) {
-                    try {
-                        const base64Data = part.inlineData.data;
+                    // Create image container
                         const imgContainer = document.createElement('div');
                         imgContainer.className = 'image-container';
 
-                        const img = new Image();
+                    const img = document.createElement('img');
                         img.className = 'ai-generated-image';
                         img.alt = 'AI generated image';
-                        img.loading = 'lazy';
+                    img.src = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
 
                         img.onload = () => {
-                            const loadingDiv = imgContainer.querySelector('.image-loading');
-                            if (loadingDiv) imgContainer.removeChild(loadingDiv);
-
-                            // Adjust container based on image aspect ratio
-                            if (img.naturalWidth && img.naturalHeight) {
-                                if (img.naturalHeight > img.naturalWidth * 1.2) {
-                                    // Portrait image
-                                    imgContainer.style.maxWidth = Math.min(300, img.naturalWidth) + 'px';
-                                } else {
-                                    // Landscape or square image
-                                    imgContainer.style.maxWidth = Math.min(500, img.naturalWidth) + 'px';
-                                }
-                            }
-
                             // If we have an ImageViewer instance, enhance this image
                             if (window.imageViewer) {
                                 setTimeout(() => window.imageViewer.enhanceImage(img), 100);
                             }
                         };
 
-                        img.onerror = () => {
-                            imgContainer.innerHTML = '<p style="color: var(--danger-color);">[Failed to load image]</p>';
-                        };
-
-                        img.src = `data:${part.inlineData.mimeType};base64,${base64Data}`;
                         imgContainer.appendChild(img);
                         messageContent.appendChild(imgContainer);
-                    } catch (error) {
-                        console.error('Error displaying inline image:', error);
-                        debugLog('Error displaying inline image', error);
-                    }
                 }
             }
-        } else {
-            // Just display text if no parts
-            if (text && text.trim() !== '') {
+        } else if (text) {
+            // Fallback if we only have text
                 const markdownBuffer = new MarkdownBuffer(messageContent);
                 markdownBuffer.appendText(text);
-            }
         }
 
         messageDiv.appendChild(messageContent);
         messagesContainer.appendChild(messageDiv);
 
+        // Add AI message buttons (delete, regenerate, etc.)
+        addAIMessageButtons(messageDiv);
+
+        // Auto-scroll to the new message
         requestAnimationFrame(() => {
-            const lastMessage = messagesContainer.lastElementChild;
-            if (lastMessage) {
-                lastMessage.scrollIntoView({
+            messageDiv.scrollIntoView({
                     behavior: 'smooth',
                     block: 'end',
                     inline: 'nearest'
                 });
-            } else {
-                messagesContainer.scrollTop = messagesContainer.scrollHeight;
-            }
         });
 
-        // Add delete and regenerate buttons to AI message
-        addAIMessageButtons(messageDiv);
+        // Make the last user message editable
+        const userMessages = Array.from(messagesContainer.querySelectorAll('.user-message'));
 
-        // Add GIF creator button if the message has at least one image
-        const imageCount = messageContent.querySelectorAll('.ai-generated-image').length;
-        if (imageCount >= 1) {
-            // Add the GIF creator button after a slight delay to ensure images are rendered
-            setTimeout(() => {
-                if (window.gifCreator) {
-                    window.gifCreator.addGifButtonToMessage(messageDiv);
-                } else {
-                    const gifCreator = new GifCreator();
-                    gifCreator.addGifButtonToMessage(messageDiv);
-                }
-            }, 100);
-        }
-
-        // Add edit and delete buttons to the most recent user message that doesn't have one
-        const userMessages = document.querySelectorAll('.user-message');
         if (userMessages.length > 0) {
             const lastUserMessage = userMessages[userMessages.length - 1];
 
@@ -1138,6 +1096,31 @@ document.addEventListener('DOMContentLoaded', () => {
         const originalContent = messageElement.querySelector('.message-content').innerHTML;
         const messageContent = messageElement.querySelector('.message-content');
 
+        // Get the message index in chat history
+        const messagesContainer = document.getElementById('messages-container');
+        const userMessages = Array.from(messagesContainer.querySelectorAll('.user-message'));
+        const messageIndex = userMessages.indexOf(messageElement);
+        
+        // Find the corresponding message in chat history
+        let historyIndex = -1;
+        let userMessageCount = 0;
+        let messageImages = [];
+        
+        for (let i = 0; i < chatHistory.length; i++) {
+            if (chatHistory[i].role === 'user') {
+                if (userMessageCount === messageIndex) {
+                    historyIndex = i;
+                    
+                    // Extract any images from this message
+                    if (chatHistory[i].parts) {
+                        messageImages = chatHistory[i].parts.filter(part => part.inlineData);
+                    }
+                    break;
+                }
+                userMessageCount++;
+            }
+        }
+
         // Create edit interface
         const editContainer = document.createElement('div');
         editContainer.className = 'edit-container';
@@ -1156,6 +1139,88 @@ document.addEventListener('DOMContentLoaded', () => {
             this.style.height = 'auto';
             this.style.height = this.scrollHeight + 'px';
         });
+        
+        // Create a temporary array to hold images for this edit session
+        const editSessionImages = [...messageImages];
+        
+        // Create the image preview area if there are images
+        const imagePreviewArea = document.createElement('div');
+        imagePreviewArea.className = 'image-preview-container';
+        
+        // Function to refresh the image preview area
+        const refreshImagePreviews = () => {
+            imagePreviewArea.innerHTML = '';
+            
+            if (editSessionImages.length > 0) {
+                editSessionImages.forEach((img, index) => {
+                    const previewContainer = document.createElement('div');
+                    previewContainer.className = 'image-preview';
+                    
+                    const imgElement = document.createElement('img');
+                    imgElement.src = `data:${img.inlineData.mimeType};base64,${img.inlineData.data}`;
+                    
+                    const removeButton = document.createElement('button');
+                    removeButton.className = 'remove-image';
+                    removeButton.innerHTML = '&times;';
+                    removeButton.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        editSessionImages.splice(index, 1);
+                        refreshImagePreviews();
+                    });
+                    
+                    previewContainer.appendChild(imgElement);
+                    previewContainer.appendChild(removeButton);
+                    imagePreviewArea.appendChild(previewContainer);
+                });
+            }
+        };
+        
+        // Initial render of image previews
+        refreshImagePreviews();
+        
+        // Add image upload button
+        const imageUploadBtn = document.createElement('button');
+        imageUploadBtn.className = 'edit-image-upload-btn';
+        imageUploadBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>';
+        imageUploadBtn.title = 'Add Image';
+        
+        // Hidden file input for image uploads
+        const hiddenImageInput = document.createElement('input');
+        hiddenImageInput.type = 'file';
+        hiddenImageInput.accept = 'image/*';
+        hiddenImageInput.style.display = 'none';
+        hiddenImageInput.multiple = true;
+        
+        // Handle image uploads
+        hiddenImageInput.addEventListener('change', (e) => {
+            const files = e.target.files;
+            if (!files || files.length === 0) return;
+            
+            Array.from(files).forEach(file => {
+                if (!file.type.startsWith('image/')) return;
+                
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const base64Data = e.target.result.split(',')[1];
+                    editSessionImages.push({
+                        inlineData: {
+                            data: base64Data,
+                            mimeType: file.type
+                        }
+                    });
+                    refreshImagePreviews();
+                };
+                reader.readAsDataURL(file);
+            });
+            
+            // Reset the input
+            hiddenImageInput.value = '';
+        });
+        
+        // Connect image upload button to hidden input
+        imageUploadBtn.addEventListener('click', () => {
+            hiddenImageInput.click();
+        });
 
         // Add edit actions
         const editActions = document.createElement('div');
@@ -1170,9 +1235,12 @@ document.addEventListener('DOMContentLoaded', () => {
         cancelButton.textContent = 'Cancel';
 
         editActions.appendChild(cancelButton);
+        editActions.appendChild(imageUploadBtn);
         editActions.appendChild(saveButton);
 
         editContainer.appendChild(editInput);
+        editContainer.appendChild(imagePreviewArea);
+        editContainer.appendChild(hiddenImageInput);
         editContainer.appendChild(editActions);
 
         // Replace content with edit interface
@@ -1194,9 +1262,10 @@ document.addEventListener('DOMContentLoaded', () => {
         // Set up save button
         saveButton.addEventListener('click', async () => {
             const newText = editInput.value.trim();
+            const hasImageChanges = JSON.stringify(messageImages) !== JSON.stringify(editSessionImages);
 
-            if (!newText || newText === originalText) {
-                // No changes or empty, just restore
+            if (!newText && editSessionImages.length === 0) {
+                // No text and no images, just restore
                 messageContent.innerHTML = originalContent;
                 messageElement.classList.remove('editing');
 
@@ -1205,13 +1274,44 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // Update the message text
+            if (newText === originalText && !hasImageChanges) {
+                // No changes to text or images, just restore
+                messageContent.innerHTML = originalContent;
+                messageElement.classList.remove('editing');
+                
+                // Re-add edit button after no change
+                addEditButton(messageElement, originalText);
+                return;
+            }
+
+            // Update the message text and images in the UI
+            messageContent.innerHTML = '';
+            
+            if (newText) {
             const textDiv = document.createElement('div');
             textDiv.className = 'user-text';
             textDiv.textContent = newText;
-
-            messageContent.innerHTML = '';
             messageContent.appendChild(textDiv);
+            }
+            
+            // Add images if any
+            if (editSessionImages.length > 0) {
+                const imageGallery = document.createElement('div');
+                imageGallery.className = 'image-gallery';
+    
+                editSessionImages.forEach(img => {
+                    const imgContainer = document.createElement('div');
+                    imgContainer.className = 'image-container';
+    
+                    const imgElement = document.createElement('img');
+                    imgElement.src = `data:${img.inlineData.mimeType};base64,${img.inlineData.data}`;
+    
+                    imgContainer.appendChild(imgElement);
+                    imageGallery.appendChild(imgContainer);
+                });
+    
+                messageContent.appendChild(imageGallery);
+            }
 
             // Remove editing state
             messageElement.classList.remove('editing');
@@ -1227,6 +1327,26 @@ document.addEventListener('DOMContentLoaded', () => {
             while (nextElement) {
                 messagesToRegenerate.push(nextElement);
                 nextElement = nextElement.nextElementSibling;
+            }
+            
+            // Update the message in chat history with new text and images
+            if (historyIndex !== -1) {
+                // Keep the message's role but replace its parts
+                chatHistory[historyIndex].parts = [];
+                
+                // Add text if it exists
+                if (newText) {
+                    chatHistory[historyIndex].parts.push({ text: newText });
+                }
+                
+                // Add images if any
+                chatHistory[historyIndex].parts.push(...editSessionImages);
+                
+                debugLog('Updated message in chat history with new content', {
+                    historyIndex,
+                    textLength: newText ? newText.length : 0,
+                    imageCount: editSessionImages.length
+                });
             }
 
             if (messagesToRegenerate.length > 0) {
@@ -1249,9 +1369,6 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 // No AI responses to regenerate, generate a new one
                 debugLog('No existing AI responses to regenerate, generating new response');
-                
-                // Update chat history with the edited text
-                updateChatHistoryAfterEdit(messageElement, newText, true);
                 
                 // Show typing indicator
                 const typingIndicator = document.createElement('div');
@@ -1744,26 +1861,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderStoredMessages(messages) {
-        // Clear existing messages first
+        // Start with a clean slate
         messagesContainer.innerHTML = '';
 
-        // Create welcome message
-        const welcomeMessage = document.createElement('div');
-        welcomeMessage.className = 'message system-message animate-in';
-        welcomeMessage.innerHTML = `
-            <div class="system-message-inner">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="system-icon">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <polygon points="10 8 16 12 10 16 10 8"></polygon>
-                </svg>
-                <div>
-                    Loaded conversation history
-                </div>
-            </div>
-        `;
-        messagesContainer.appendChild(welcomeMessage);
-
-        // Process each message
         messages.forEach(message => {
             if (message.role === 'user') {
                 // Render user message
@@ -1773,49 +1873,50 @@ document.addEventListener('DOMContentLoaded', () => {
                 const messageContent = document.createElement('div');
                 messageContent.className = 'message-content';
 
-                // Process parts for text and images
+                let hasText = false;
+                let hasImages = false;
+
+                // Process all parts to show text and images in order
                 message.parts.forEach(part => {
                     if (part.text) {
-                        // Since we now store just the user's text without system prompts,
-                        // no need to strip out system instructions
+                        hasText = true;
                         const textDiv = document.createElement('div');
                         textDiv.className = 'user-text';
                         textDiv.textContent = part.text;
                         messageContent.appendChild(textDiv);
                     } else if (part.inlineData) {
+                        hasImages = true;
+                        // If this is the first image, create a gallery
+                        if (!messageContent.querySelector('.image-gallery')) {
+                            const imageGallery = document.createElement('div');
+                            imageGallery.className = 'image-gallery';
+                            messageContent.appendChild(imageGallery);
+                        }
+                        
+                        const imageGallery = messageContent.querySelector('.image-gallery');
                         const imgContainer = document.createElement('div');
                         imgContainer.className = 'image-container';
 
                         const img = document.createElement('img');
-                        img.className = 'user-uploaded-image';
                         img.src = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
 
                         imgContainer.appendChild(img);
-                        messageContent.appendChild(imgContainer);
+                        imageGallery.appendChild(imgContainer);
                     }
                 });
 
+                // Add message to DOM only if it has content
+                if (hasText || hasImages) {
                 messageDiv.appendChild(messageContent);
                 messagesContainer.appendChild(messageDiv);
 
-                // Add edit button after the user message is rendered
-                const userMessageElements = messagesContainer.querySelectorAll('.user-message');
-                if (userMessageElements.length > 0) {
-                    const lastUserMessage = userMessageElements[userMessageElements.length - 1];
-
-                    // Extract the text content to use with the edit button
-                    let messageText = '';
-                    if (message.parts && message.parts.length > 0) {
-                        const textPart = message.parts.find(p => p.text);
-                        if (textPart) {
-                            // Since we now store message text without system instructions,
-                            // we should have clean text already
-                            messageText = textPart.text;
-                        }
+                    // Add edit button
+                    const textElement = messageContent.querySelector('.user-text');
+                    if (textElement) {
+                        addEditButton(messageDiv, textElement.textContent);
+                    } else {
+                        addEditButton(messageDiv, '');
                     }
-
-                    // Add edit button with the extracted text
-                    addEditButton(lastUserMessage, messageText);
                 }
             } else if (message.role === 'model') {
                 // Render AI message
@@ -1862,23 +1963,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // Add GIF creator buttons after message rendering is complete
-        setTimeout(() => {
-            if (window.gifCreator) {
-                const aiMessages = messagesContainer.querySelectorAll('.ai-message');
-                aiMessages.forEach(message => {
-                    const images = message.querySelectorAll('.ai-generated-image');
-                    if (images.length >= 1) {
-                        window.gifCreator.addGifButtonToMessage(message);
-                    }
-                });
-            }
-        }, 300);
-
         // Scroll to bottom
+        requestAnimationFrame(() => {
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
-
-        debugLog('Rendered stored messages', { count: messages.length });
+        });
     }
 
     // Initialize API if key exists
