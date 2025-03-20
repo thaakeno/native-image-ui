@@ -1,0 +1,650 @@
+/* GitHub Releases Panel Styling */
+.github-releases-panel {
+    position: fixed;
+    top: 60px;
+    right: -400px;
+    width: 380px;
+    max-width: 90vw;
+    max-height: calc(100vh - 80px);
+    background: var(--bg-color);
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.17, 0.84, 0.44, 1);
+    border: 1px solid var(--border-color);
+    backdrop-filter: blur(10px);
+}
+
+.github-releases-panel.visible {
+    right: 10px;
+    transform: translateZ(0);
+}
+
+.releases-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--message-bg);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.releases-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.releases-title svg {
+    color: #9c6ade; /* Purple color for GitHub icon */
+    filter: drop-shadow(0 0 5px rgba(156, 106, 222, 0.4));
+}
+
+.releases-title h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-color);
+    text-shadow: 0 0 10px rgba(156, 106, 222, 0.1);
+}
+
+.releases-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.releases-actions button {
+    background: rgba(156, 106, 222, 0.08);
+    border: none;
+    border-radius: 8px;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--text-secondary);
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.releases-actions button:hover {
+    background: rgba(156, 106, 222, 0.15);
+    color: #9c6ade;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.releases-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0;
+}
+
+.releases-loading {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 30px;
+    color: var(--text-secondary);
+}
+
+.loading-spinner {
+    width: 30px;
+    height: 30px;
+    border: 3px solid rgba(var(--accent-rgb), 0.2);
+    border-top-color: var(--accent-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 10px;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.releases-list {
+    padding: 4px;
+}
+
+.no-releases {
+    padding: 30px;
+    text-align: center;
+    color: var(--text-secondary);
+}
+
+.release-item {
+    padding: 18px;
+    margin: 8px;
+    border-radius: 10px;
+    background: var(--message-bg);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s cubic-bezier(0.05, 0.7, 0.1, 1.0);
+    transform: translateZ(0);
+    border: none;
+}
+
+.release-item:hover {
+    transform: translateY(-2px) scale(1.01);
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
+}
+
+.release-item.latest {
+    background: linear-gradient(to right, 
+        rgba(var(--accent-rgb), 0.8), 
+        rgba(var(--accent-rgb), 0.4)
+    );
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.release-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.release-tag-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.latest-tag {
+    background-color: rgba(255, 255, 255, 0.2);
+    color: white;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 20px;
+    text-transform: uppercase;
+    box-shadow: 0 0 10px rgba(var(--accent-rgb), 0.3);
+}
+
+.version-tag {
+    background-color: rgba(var(--accent-rgb), 0.1);
+    color: var(--text-color);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 4px 12px;
+    border-radius: 6px;
+    font-family: var(--font-mono);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.release-item.latest .version-tag {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+}
+
+.release-date {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.release-item.latest .release-date {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.release-title {
+    font-size: 20px;
+    font-weight: 600;
+    margin: 12px 0 8px;
+    color: var(--text-color);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.release-item.latest .release-title {
+    color: white;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.release-name {
+    font-size: 16px;
+    font-weight: 500;
+    margin: 0 0 12px;
+    color: var(--text-color);
+}
+
+.release-item.latest .release-name {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.release-body {
+    font-size: 14px;
+    line-height: 1.5;
+    margin-bottom: 12px;
+    color: var(--text-color);
+    word-break: break-word;
+}
+
+.release-item.latest .release-body {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.release-item.latest .release-body a {
+    color: white;
+    text-decoration: underline;
+}
+
+/* Styling markdown elements in release-body */
+.release-body h1, 
+.release-body h2, 
+.release-body h3, 
+.release-body h4, 
+.release-body h5, 
+.release-body h6 {
+    margin-top: 14px;
+    margin-bottom: 10px;
+    font-weight: 600;
+    line-height: 1.3;
+}
+
+.release-body h1 { font-size: 22px; }
+.release-body h2 { font-size: 20px; }
+.release-body h3 { font-size: 18px; }
+.release-body h4 { font-size: 16px; }
+.release-body h5, .release-body h6 { font-size: 14px; }
+
+.release-body strong {
+    font-weight: 600;
+    color: var(--accent-color);
+}
+
+.release-item.latest .release-body strong {
+    color: white;
+    text-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
+}
+
+.release-body ul, 
+.release-body ol {
+    margin: 10px 0;
+    padding-left: 24px;
+}
+
+.release-body li {
+    margin-bottom: 6px;
+    position: relative;
+}
+
+.release-body p {
+    margin: 0 0 14px;
+}
+
+.release-body a {
+    color: var(--accent-color);
+    text-decoration: none;
+    transition: color 0.2s ease;
+    font-weight: 500;
+}
+
+.release-body a:hover {
+    text-decoration: underline;
+}
+
+.release-body code {
+    font-family: var(--font-mono);
+    background-color: var(--code-bg);
+    padding: 2px 5px;
+    border-radius: 4px;
+    font-size: 12px;
+    box-shadow: inset 0 0 3px rgba(0, 0, 0, 0.1);
+}
+
+.release-body pre {
+    background-color: var(--code-bg);
+    padding: 12px;
+    border-radius: 8px;
+    overflow-x: auto;
+    margin: 12px 0;
+    box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.15);
+}
+
+.release-body pre code {
+    background-color: transparent;
+    padding: 0;
+    border-radius: 0;
+    font-size: 12px;
+    white-space: pre;
+    box-shadow: none;
+}
+
+.release-body hr {
+    border: 0;
+    height: 1px;
+    background-color: var(--border-color);
+    margin: 16px 0;
+}
+
+.release-footer {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 14px;
+}
+
+.release-link {
+    font-size: 13px;
+    color: var(--accent-color);
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.2s ease;
+    background: rgba(var(--accent-rgb), 0.1);
+    padding: 8px 12px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.release-link:hover {
+    color: white;
+    background: var(--accent-color);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    text-decoration: none;
+}
+
+.release-item.latest .release-link {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+}
+
+.release-item.latest .release-link:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.releases-update-instructions {
+    padding: 16px;
+    border-top: 1px solid var(--border-color);
+    background-color: var(--bg-color);
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.update-command {
+    display: flex;
+    align-items: center;
+    font-size: 13px;
+    gap: 8px;
+    background: rgba(var(--accent-rgb), 0.05);
+    padding: 10px;
+    border-radius: 8px;
+    box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.05);
+}
+
+.update-command span {
+    color: var(--text-secondary);
+}
+
+.update-command code {
+    flex-grow: 1;
+    font-family: var(--font-mono);
+    padding: 8px 12px;
+    background-color: var(--code-bg);
+    color: var(--text-color);
+    border-radius: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    user-select: all;
+    box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.1);
+}
+
+.copy-command-btn {
+    background: rgba(var(--accent-rgb), 0.1);
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--text-secondary);
+    transition: all 0.2s ease;
+    padding: 8px;
+    border-radius: 6px;
+}
+
+.copy-command-btn:hover {
+    color: var(--accent-color);
+    background: rgba(var(--accent-rgb), 0.15);
+    transform: translateY(-2px);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.releases-toggle-btn {
+    position: relative;
+    background: rgba(156, 106, 222, 0.08);
+    border: none;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--text-secondary);
+    border-radius: 10px;
+    transition: all 0.3s cubic-bezier(0.17, 0.84, 0.44, 1);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    animation: gentle-float 3s ease-in-out infinite;
+    overflow: hidden;
+}
+
+.releases-toggle-btn::before {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle, rgba(156, 106, 222, 0.1) 0%, rgba(156, 106, 222, 0) 70%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.releases-toggle-btn:hover {
+    background: rgba(156, 106, 222, 0.15);
+    color: #9c6ade;
+    transform: translateY(-3px) scale(1.05);
+    box-shadow: 0 10px 15px rgba(156, 106, 222, 0.2);
+    animation-play-state: paused;
+}
+
+.releases-toggle-btn:hover::before {
+    opacity: 1;
+    animation: pulse-ring 1.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+}
+
+.releases-toggle-btn.active {
+    color: #9c6ade;
+    background: rgba(156, 106, 222, 0.15);
+    box-shadow: 0 2px 8px rgba(156, 106, 222, 0.3);
+    animation-play-state: paused;
+}
+
+.releases-toggle-btn svg {
+    filter: drop-shadow(0 0 3px rgba(156, 106, 222, 0.2));
+    color: #9c6ade; /* Purple GitHub icon */
+    transition: transform 0.3s ease;
+}
+
+.releases-toggle-btn:hover svg {
+    transform: rotate(5deg) scale(1.1);
+    animation: wiggle 1s ease-in-out;
+}
+
+@keyframes gentle-float {
+    0% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-5px);
+    }
+    100% {
+        transform: translateY(0);
+    }
+}
+
+@keyframes wiggle {
+    0%, 100% { transform: rotate(0) scale(1.1); }
+    25% { transform: rotate(8deg) scale(1.15); }
+    50% { transform: rotate(-5deg) scale(1.1); }
+    75% { transform: rotate(3deg) scale(1.05); }
+}
+
+@keyframes pulse-ring {
+    0% {
+        transform: scale(0.8);
+        opacity: 0.5;
+    }
+    50% {
+        opacity: 0.2;
+    }
+    100% {
+        transform: scale(1.5);
+        opacity: 0;
+    }
+}
+
+.update-indicator {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 8px;
+    height: 8px;
+    background-color: #ff5b87; /* Bright pink for better contrast with purple */
+    border-radius: 50%;
+    display: none;
+    box-shadow: 0 0 10px #ff5b87;
+}
+
+.update-indicator.visible {
+    display: block;
+    animation: glow-pulse 2s infinite;
+}
+
+@keyframes glow-pulse {
+    0% {
+        transform: scale(0.8);
+        opacity: 0.7;
+        box-shadow: 0 0 5px #ff5b87;
+    }
+    50% {
+        transform: scale(1.3);
+        opacity: 1;
+        box-shadow: 0 0 15px #ff5b87, 0 0 20px rgba(255, 91, 135, 0.5);
+    }
+    100% {
+        transform: scale(0.8);
+        opacity: 0.7;
+        box-shadow: 0 0 5px #ff5b87;
+    }
+}
+
+.github-releases-toast {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    padding: 12px 18px;
+    background-color: var(--message-bg);
+    color: var(--text-color);
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+    font-size: 14px;
+    transform: translateY(100px);
+    opacity: 0;
+    transition: all 0.3s cubic-bezier(0.17, 0.84, 0.44, 1);
+    z-index: 1100;
+    border: 1px solid rgba(var(--accent-rgb), 0.1);
+}
+
+.github-releases-toast.visible {
+    transform: translateY(0);
+    opacity: 1;
+}
+
+.github-releases-toast.error {
+    background-color: var(--error-bg);
+    color: var(--error-color);
+    border-color: rgba(var(--error-rgb), 0.2);
+}
+
+/* Light theme adjustments */
+[data-theme="light"] .release-item.latest {
+    background: linear-gradient(to right, 
+        rgba(156, 106, 222, 0.7), 
+        rgba(156, 106, 222, 0.3)
+    );
+    color: black;
+}
+
+[data-theme="light"] .release-body {
+    color: black;
+}
+
+[data-theme="light"] .release-body strong {
+    color: #9c6ade;
+}
+
+[data-theme="light"] .release-name {
+    color: black;
+}
+
+[data-theme="light"] .release-title {
+    color: black;
+}
+
+[data-theme="light"] .release-date {
+    color: #555;
+}
+
+/* Mobile responsive styles */
+@media (max-width: 768px) {
+    /* Hide GitHub releases button and panel on mobile */
+    .releases-toggle-btn {
+        display: none !important;
+    }
+    
+    .github-releases-panel {
+        display: none !important;
+    }
+    
+    .release-item {
+        margin: 6px;
+        padding: 16px;
+    }
+}
+
+/* Add styling for task checkboxes */
+.release-body .task-list-item {
+    position: relative;
+    list-style-type: none;
+    margin-left: -20px;
+    padding-left: 20px;
+}
+
+.release-body .task-checkbox {
+    display: inline-block;
+    margin-right: 8px;
+    font-size: 15px;
+}
+
+.release-body .task-list-item.checked {
+    color: var(--text-secondary);
+    text-decoration: line-through;
+}
+
+.release-item.latest .task-list-item.checked {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.release-body .task-list-item.checked .task-checkbox {
+    color: var(--accent-color);
+}
+
+.release-item.latest .task-list-item.checked .task-checkbox {
+    color: rgba(255, 255, 255, 0.9);
+} 

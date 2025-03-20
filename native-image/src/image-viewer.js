@@ -7,6 +7,12 @@ class ImageViewer {
         
         // Listen for new images added to the DOM
         this.setupMutationObserver();
+        
+        // Setup tactile mode observer
+        this.setupTactileObserver();
+        
+        // Add resize listener for responsive handling
+        this.setupResizeListener();
     }
     
     // Add CSS rule to hide images that are likely to be in carousels
@@ -230,6 +236,10 @@ class ImageViewer {
         // Create the carousel container
         const carousel = document.createElement('div');
         carousel.className = 'image-carousel';
+        
+        // Check if tactile mode is enabled
+        const isTactileMode = document.documentElement.getAttribute('data-tactile') === 'true';
+        this.logDebug('Creating carousel', { tactileMode: isTactileMode });
         
         // Create carousel viewport
         const viewport = document.createElement('div');
@@ -522,6 +532,10 @@ class ImageViewer {
             counter.innerHTML = `<span>${index + 1}</span> / <span>${slides.length}</span>`;
         }
         
+        // Check if we're in tactile mode
+        const isTactileMode = document.documentElement.getAttribute('data-tactile') === 'true';
+        const isMobile = window.innerWidth <= 768;
+        
         // Clear any existing animation classes
         slides.forEach(slide => {
             slide.classList.remove('slide-in-next', 'slide-out-prev', 'slide-in-prev', 'slide-out-next');
@@ -531,33 +545,51 @@ class ImageViewer {
         slides.forEach((slide, i) => {
             const slideIndex = parseInt(slide.getAttribute('data-index'), 10);
             
-            if (direction === 'next') {
+            // Special case for tactile on mobile - no slide animations, just fade
+            if (isTactileMode && isMobile) {
+                // Remove all transforms - we'll use absolute positioning and opacity instead
+                slide.style.transform = '';
+                slide.style.transition = 'opacity 0.3s ease-in-out';
+                
                 if (slideIndex === index) {
-                    // New slide coming in from right
-                    slide.classList.add('slide-in-next');
-                } else if (slideIndex === currentIndex) {
-                    // Current slide going out to left
-                    slide.classList.add('slide-out-prev');
+                    slide.style.zIndex = '2';
+                    slide.style.opacity = '1';
+                    slide.classList.add('active');
+                } else {
+                    slide.style.zIndex = '1';
+                    slide.style.opacity = '0';
+                    slide.classList.remove('active');
                 }
             } else {
-                if (slideIndex === index) {
-                    // New slide coming in from left
-                    slide.classList.add('slide-in-prev');
-                } else if (slideIndex === currentIndex) {
-                    // Current slide going out to right
-                    slide.classList.add('slide-out-next');
+                // Desktop or non-tactile: Use standard slide animations
+                if (direction === 'next') {
+                    if (slideIndex === index) {
+                        // New slide coming in from right
+                        slide.classList.add('slide-in-next');
+                    } else if (slideIndex === currentIndex) {
+                        // Current slide going out to left
+                        slide.classList.add('slide-out-prev');
+                    }
+                } else {
+                    if (slideIndex === index) {
+                        // New slide coming in from left
+                        slide.classList.add('slide-in-prev');
+                    } else if (slideIndex === currentIndex) {
+                        // Current slide going out to right
+                        slide.classList.add('slide-out-next');
+                    }
                 }
-            }
-            
-            // Update slide positions 
-            const position = slideIndex - index;
-            slide.style.transform = `translateX(${position * 100}%)`;
-            
-            // Update active state
-            if (slideIndex === index) {
-                slide.classList.add('active');
-            } else {
-                slide.classList.remove('active');
+                
+                // Update slide positions 
+                const position = slideIndex - index;
+                slide.style.transform = `translateX(${position * 100}%)`;
+                
+                // Update active state
+                if (slideIndex === index) {
+                    slide.classList.add('active');
+                } else {
+                    slide.classList.remove('active');
+                }
             }
         });
         
@@ -985,6 +1017,86 @@ class ImageViewer {
             
             this.logDebug('Carousel setting changed, reprocessed all messages', 
                         { enabled: this.isCarouselEnabled() });
+        });
+    }
+    
+    setupTactileObserver() {
+        // Add observer for tactile mode changes
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach(mutation => {
+                if (mutation.type === 'attributes' && 
+                    mutation.attributeName === 'data-tactile') {
+                    this.refreshAllCarousels();
+                }
+            });
+        });
+        
+        // Start observing document for tactile changes
+        observer.observe(document.documentElement, {
+            attributes: true,
+            attributeFilter: ['data-tactile']
+        });
+        
+        // Also check on init
+        this.logDebug('Setting up tactile observer');
+    }
+    
+    refreshAllCarousels() {
+        // Find all carousels and refresh them
+        const carousels = document.querySelectorAll('.image-carousel');
+        if (carousels.length > 0) {
+            this.logDebug('Refreshing carousels due to tactile mode change', { count: carousels.length });
+            
+            // Remove existing carousels and rebuild them
+            carousels.forEach(carousel => {
+                const messageElement = carousel.closest('.user-message');
+                if (messageElement) {
+                    // Remove carousel
+                    carousel.remove();
+                    
+                    // Reset image classes
+                    messageElement.querySelectorAll('.in-carousel').forEach(img => {
+                        img.classList.remove('in-carousel');
+                        const container = this.findImageContainer(img);
+                        if (container) {
+                            container.style.display = '';
+                        } else {
+                            img.style.display = '';
+                        }
+                    });
+                    
+                    // Reprocess message
+                    this.processUserMessage(messageElement);
+                }
+            });
+        }
+    }
+    
+    setupResizeListener() {
+        // Track previous width to avoid unnecessary processing
+        let previousWidth = window.innerWidth;
+        
+        // Debounce function to avoid excessive processing
+        let resizeTimeout;
+        
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimeout);
+            
+            resizeTimeout = setTimeout(() => {
+                const currentWidth = window.innerWidth;
+                
+                // Only reprocess if crossing the mobile breakpoint
+                if ((previousWidth <= 768 && currentWidth > 768) || 
+                    (previousWidth > 768 && currentWidth <= 768)) {
+                    this.logDebug('Screen size changed across mobile breakpoint, refreshing carousels', 
+                                { from: previousWidth, to: currentWidth });
+                    
+                    // Rebuild all carousels
+                    this.refreshAllCarousels();
+                }
+                
+                previousWidth = currentWidth;
+            }, 250); // Small delay to avoid frequent processing
         });
     }
 }
