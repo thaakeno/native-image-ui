@@ -34,6 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const systemInstructionsInput = document.getElementById('system-instructions-input');
     const saveSystemInstructionsBtn = document.getElementById('save-system-instructions');
     const resetSystemInstructionsBtn = document.getElementById('reset-system-instructions');
+    const carouselToggle = document.getElementById('carousel-toggle');
 
     // Default system instruction
     const DEFAULT_SYSTEM_INSTRUCTION = "You are an advanced AI assistant. Be helpful, accurate, and concise in your responses. If you're unsure about something, acknowledge it rather than making up information. You can generate both text responses and images based on user requests.";
@@ -62,7 +63,8 @@ document.addEventListener('DOMContentLoaded', () => {
         maxOutputTokens: parseInt(localStorage.getItem('maxOutputTokens')) || 8192,
         debugMode: localStorage.getItem('debugMode') === 'true' || false,
         tactileMode: localStorage.getItem('tactileMode') === 'true' || false,
-        systemInstruction: localStorage.getItem('systemInstruction') || DEFAULT_SYSTEM_INSTRUCTION
+        systemInstruction: localStorage.getItem('systemInstruction') || DEFAULT_SYSTEM_INSTRUCTION,
+        carouselEnabled: localStorage.getItem('carouselEnabled') !== 'false' // Default to true if not set
     };
 
     // Initialize settings
@@ -73,6 +75,9 @@ document.addEventListener('DOMContentLoaded', () => {
     maxTokensValue.textContent = config.maxOutputTokens;
     debugToggle.checked = config.debugMode;
     systemInstructionsInput.value = config.systemInstruction;
+    
+    // Set carousel toggle initial state
+    carouselToggle.checked = config.carouselEnabled;
 
     // Initialize theme selection
     const themeSelector = document.getElementById('theme-selector');
@@ -393,16 +398,46 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 50);
     });
 
+    // Debug mode toggle
     debugToggle.addEventListener('change', () => {
         config.debugMode = debugToggle.checked;
         localStorage.setItem('debugMode', config.debugMode);
-
-        debugPanel.style.display = config.debugMode ? 'block' : 'none';
-
+        
         if (config.debugMode) {
-            debugLog('Debug mode enabled');
+            debugPanel.style.display = 'block';
+            setTimeout(() => {
+                debugPanel.style.opacity = '1';
+            }, 10);
+        } else {
+            debugPanel.style.opacity = '0';
+            setTimeout(() => {
+                debugPanel.style.display = 'none';
+            }, 300);
         }
     });
+    
+    // Carousel toggle
+    carouselToggle.addEventListener('change', () => {
+        config.carouselEnabled = carouselToggle.checked;
+        localStorage.setItem('carouselEnabled', config.carouselEnabled);
+        
+        // Dispatch an event to notify the image viewer of the setting change
+        const event = new CustomEvent('carouselSettingChanged', {
+            detail: { enabled: config.carouselEnabled }
+        });
+        window.dispatchEvent(event);
+        
+        showMessage(`Image carousels ${config.carouselEnabled ? 'enabled' : 'disabled'}. Changes have been applied.`, 'system-message');
+    });
+
+    // Helper function to notify the image viewer that a message was edited
+    function notifyMessageEdited(messageElement) {
+        // Dispatch a custom event that the image viewer is listening for
+        const event = new CustomEvent('messageEdited', {
+            detail: { messageElement }
+        });
+        document.dispatchEvent(event);
+    }
 
     clearDebug.innerHTML = `
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -2705,5 +2740,72 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
         });
+    }
+
+    // Add or update image in a message
+    function addImageToMessage(messageElement, imageUrl, imageType = 'ai-generated-image') {
+        const messageContent = messageElement.querySelector('.message-content');
+        
+        // Create image container
+        const imageContainer = document.createElement('div');
+        imageContainer.className = 'image-container';
+        
+        // Create image element
+        const img = document.createElement('img');
+        img.src = imageUrl;
+        img.className = imageType;
+        img.alt = 'Generated image';
+        
+        // Add image to container
+        imageContainer.appendChild(img);
+        
+        // Add container to message
+        messageContent.appendChild(imageContainer);
+        
+        // Notify the image viewer that the message was edited
+        notifyMessageEdited(messageElement);
+        
+        return img;
+    }
+
+    // Function to render a user message
+    function renderUserMessage(text, images = []) {
+        const messageElement = document.createElement('div');
+        messageElement.className = 'message user-message';
+        
+        const content = document.createElement('div');
+        content.className = 'message-content';
+        
+        // Add text content
+        if (text && text.trim()) {
+            content.innerHTML = DOMPurify.sanitize(marked.parse(text));
+        }
+        
+        // Add images if any
+        if (images && images.length > 0) {
+            images.forEach(imageData => {
+                const imageContainer = document.createElement('div');
+                imageContainer.className = 'image-container';
+                
+                const img = document.createElement('img');
+                img.src = imageData.url || imageData;
+                img.className = 'user-uploaded-image';
+                img.alt = 'User uploaded image';
+                
+                imageContainer.appendChild(img);
+                content.appendChild(imageContainer);
+            });
+        }
+        
+        messageElement.appendChild(content);
+        messagesContainer.appendChild(messageElement);
+        messageElement.scrollIntoView({ behavior: 'smooth' });
+        
+        // Notify the image viewer about this new message with images
+        if (images && images.length > 0) {
+            notifyMessageEdited(messageElement);
+        }
+        
+        return messageElement;
     }
 });

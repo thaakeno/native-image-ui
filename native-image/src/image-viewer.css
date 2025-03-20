@@ -2,10 +2,11 @@
     margin: 12px 0;
     border-radius: 12px;
     overflow: hidden;
-    background: rgba(0, 0, 0, 0.2);
+    background: transparent;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
     transition: all 0.3s var(--animation-pop);
-    max-width: 500px;
+    max-width: 100%;
+    display: inline-block;
     position: relative;
 }
 
@@ -19,6 +20,25 @@
     max-width: 100%;
     height: auto;
     transition: all 0.4s ease;
+    border-radius: 12px;
+    object-fit: contain;
+}
+
+/* Special case for non-carousel images in vertical stack */
+.user-message:not(.has-multiple-images) .image-container,
+body:not(.carousel-enabled) .user-message .image-container {
+    display: block;
+    margin: 16px 0;
+    width: auto;
+    max-width: min(600px, 100%);
+}
+
+/* Make sure AI generated images and user uploaded images have the same styling when not in carousel */
+.ai-generated-image:not(.in-carousel),
+.user-uploaded-image:not(.in-carousel) {
+    max-width: 100%;
+    border-radius: 12px;
+    object-fit: contain;
 }
 
 .image-actions {
@@ -30,6 +50,7 @@
     opacity: 0;
     transform: translateY(-5px);
     transition: all 0.3s ease;
+    z-index: 5; /* Make sure controls are above the image */
 }
 
 .image-container:hover .image-actions {
@@ -63,6 +84,383 @@
     width: 18px;
     height: 18px;
     filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+}
+
+/* Hide images that will be in carousels to prevent flashing */
+.carousel-enabled .user-message:has(img + img) img:not(.in-carousel),
+.carousel-enabled .user-message:has(.image-container + .image-container) .image-container:not(.in-carousel),
+.carousel-enabled .user-message.processing-carousel img:not(.in-carousel),
+.carousel-enabled .user-message.processing-carousel .image-container:not(.in-carousel) {
+    opacity: 0 !important;
+    position: absolute !important;
+    pointer-events: none !important;
+    z-index: -1 !important;
+}
+
+/* Improved transition for toggling between carousel and normal images */
+.user-message .image-container {
+    transition: all 0.5s cubic-bezier(0.2, 1, 0.3, 1);
+}
+
+/* Carousel Styles - Completely Redesigned */
+.image-carousel {
+    position: relative;
+    width: 100%;
+    max-width: 1000px; /* Much larger max-width */
+    margin: 30px auto;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+    transition: all 0.5s cubic-bezier(0.2, 1, 0.3, 1);
+    z-index: 5;
+    background: rgba(0, 0, 0, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    opacity: 0; /* Start invisible */
+    transform: translateY(10px);
+    will-change: opacity, transform;
+}
+
+.image-carousel.loaded {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.user-message .image-carousel {
+    margin: 15px auto 30px auto;
+}
+
+.image-carousel:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+}
+
+.carousel-viewport {
+    position: relative;
+    width: 100%;
+    height: 0;
+    padding-bottom: 65%; /* Better aspect ratio for larger images */
+    overflow: hidden;
+    background: rgba(0, 0, 0, 0.02);
+}
+
+.carousel-slide {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.6s cubic-bezier(0.65, 0, 0.35, 1);
+    will-change: transform;
+    background-color: transparent;
+}
+
+.carousel-slide img {
+    max-width: 92%;
+    max-height: 92%;
+    width: auto !important;
+    height: auto !important;
+    object-fit: contain;
+    border-radius: 6px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    transition: all 0.4s cubic-bezier(0.2, 1, 0.3, 1);
+    transform: scale(0.98);
+    opacity: 0.95;
+}
+
+.carousel-slide.active img {
+    transform: scale(1);
+    opacity: 1;
+}
+
+/* Improved slide animations */
+@keyframes slideInNext {
+    from { 
+        transform: translateX(50%) scale(0.9); 
+        opacity: 0; 
+    }
+    to { 
+        transform: translateX(0) scale(1); 
+        opacity: 1; 
+    }
+}
+
+@keyframes slideOutPrev {
+    from { 
+        transform: translateX(0) scale(1); 
+        opacity: 1; 
+    }
+    to { 
+        transform: translateX(-50%) scale(0.9); 
+        opacity: 0; 
+    }
+}
+
+@keyframes slideInPrev {
+    from { 
+        transform: translateX(-50%) scale(0.9); 
+        opacity: 0; 
+    }
+    to { 
+        transform: translateX(0) scale(1); 
+        opacity: 1; 
+    }
+}
+
+@keyframes slideOutNext {
+    from { 
+        transform: translateX(0) scale(1); 
+        opacity: 1; 
+    }
+    to { 
+        transform: translateX(50%) scale(0.9); 
+        opacity: 0; 
+    }
+}
+
+.slide-in-next {
+    animation: slideInNext 0.5s cubic-bezier(0.2, 0.9, 0.3, 1) forwards;
+}
+
+.slide-out-prev {
+    animation: slideOutPrev 0.5s cubic-bezier(0.2, 0.9, 0.3, 1) forwards;
+}
+
+.slide-in-prev {
+    animation: slideInPrev 0.5s cubic-bezier(0.2, 0.9, 0.3, 1) forwards;
+}
+
+.slide-out-next {
+    animation: slideOutNext 0.5s cubic-bezier(0.2, 0.9, 0.3, 1) forwards;
+}
+
+/* Redesigned Carousel Controls */
+.carousel-control {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    cursor: pointer;
+    border: none;
+    z-index: 10;
+    opacity: 0.6;
+    transition: all 0.3s cubic-bezier(0.2, 0.9, 0.3, 1);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.carousel-prev {
+    left: 15px;
+}
+
+.carousel-next {
+    right: 15px;
+}
+
+.image-carousel:hover .carousel-control {
+    opacity: 0.9;
+}
+
+@keyframes scaleButton {
+    0% { transform: translateY(-50%) scale(1); }
+    50% { transform: translateY(-50%) scale(0.92); }
+    100% { transform: translateY(-50%) scale(1); }
+}
+
+.carousel-control:hover {
+    background: rgba(var(--text-accent-rgb), 0.7);
+    box-shadow: 0 6px 15px rgba(var(--text-accent-rgb), 0.4);
+}
+
+.carousel-control:active {
+    animation: scaleButton 0.4s cubic-bezier(0.2, 0.9, 0.3, 1) forwards;
+    background: rgba(var(--text-accent-rgb), 0.9);
+}
+
+.carousel-control svg {
+    width: 22px;
+    height: 22px;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
+    transition: all 0.3s ease;
+}
+
+.carousel-control:hover svg {
+    transform: scale(1.1);
+}
+
+/* Carousel Counter - Improved */
+.carousel-counter {
+    position: absolute;
+    top: 15px;
+    left: 15px;
+    background: rgba(0, 0, 0, 0.4);
+    color: #fff;
+    padding: 6px 10px;
+    border-radius: 15px;
+    font-size: 13px;
+    font-weight: 600;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 10;
+    opacity: 0.7;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.image-carousel:hover .carousel-counter {
+    opacity: 0.9;
+    background: rgba(var(--text-accent-rgb), 0.5);
+}
+
+/* Improved Thumbnails */
+.carousel-thumbnails {
+    display: flex;
+    overflow-x: auto;
+    padding: 12px;
+    background: rgba(0, 0, 0, 0.04);
+    gap: 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    scrollbar-width: thin;
+    scrollbar-color: rgba(var(--text-accent-rgb), 0.5) transparent;
+    justify-content: center;
+}
+
+.carousel-thumbnails::-webkit-scrollbar {
+    height: 4px;
+}
+
+.carousel-thumbnail {
+    flex: 0 0 auto;
+    width: 70px;
+    height: 50px;
+    border-radius: 6px;
+    overflow: hidden;
+    cursor: pointer;
+    position: relative;
+    opacity: 0.7;
+    transform: scale(0.95);
+    transition: all 0.3s cubic-bezier(0.2, 0.9, 0.3, 1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border: 2px solid transparent;
+}
+
+.carousel-thumbnail:hover {
+    opacity: 0.9;
+    transform: scale(1);
+}
+
+.carousel-thumbnail.active {
+    opacity: 1;
+    transform: scale(1.05);
+    box-shadow: 0 3px 10px rgba(var(--text-accent-rgb), 0.5);
+    border: 2px solid rgba(var(--text-accent-rgb), 0.8);
+}
+
+.carousel-thumbnail img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: all 0.3s ease;
+}
+
+/* New Pagination Dots */
+.carousel-indicators {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px;
+    background: rgba(0, 0, 0, 0.02);
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.carousel-indicator {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.2);
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.carousel-indicator:hover {
+    background: rgba(0, 0, 0, 0.4);
+}
+
+.carousel-indicator.active {
+    background: rgba(var(--text-accent-rgb), 0.8);
+    transform: scale(1.2);
+}
+
+/* Slide actions */
+.carousel-slide .image-actions {
+    z-index: 10;
+    top: 15px;
+    right: 15px;
+    transition: all 0.3s ease;
+    opacity: 0;
+}
+
+.carousel-slide.active:hover .image-actions {
+    opacity: 1;
+}
+
+/* Remove float animation */
+.image-carousel:hover .carousel-slide.active img {
+    animation: none;
+}
+
+/* Better glow effect */
+.image-carousel::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: -1;
+    border-radius: 12px;
+    box-shadow: 0 0 0 0 rgba(var(--text-accent-rgb), 0);
+    transition: box-shadow 0.4s ease;
+}
+
+.image-carousel:hover::after {
+    box-shadow: 0 0 0 3px rgba(var(--text-accent-rgb), 0.15);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .image-carousel {
+        max-width: 100%;
+        margin: 15px auto;
+    }
+    
+    .carousel-viewport {
+        padding-bottom: 80%;
+    }
+    
+    .carousel-control {
+        width: 40px;
+        height: 40px;
+        opacity: 0.7;
+    }
+    
+    .carousel-control svg {
+        width: 20px;
+        height: 20px;
+    }
 }
 
 .image-lightbox {
@@ -207,5 +605,50 @@
         padding: 8px 12px;
         font-size: 14px;
     }
+}
+
+/* Animation for individual images when transitioning from carousel */
+.user-message .image-container:not(.in-carousel) {
+    animation: fadeInScale 0.4s cubic-bezier(0.2, 1, 0.3, 1) forwards;
+}
+
+@keyframes fadeInScale {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Carousel-specific overrides to not be affected by regular image styling */
+.image-carousel .carousel-slide {
+    background: transparent;
+}
+
+.image-carousel .carousel-slide img {
+    border-radius: 8px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    max-width: 92%;
+    max-height: 92%;
+    width: auto !important;
+    height: auto !important;
+    object-fit: contain;
+    transition: all 0.4s cubic-bezier(0.2, 1, 0.3, 1);
+    transform: scale(0.98);
+    opacity: 0.95;
+}
+
+.carousel-slide.active img {
+    transform: scale(1);
+    opacity: 1;
+}
+
+/* Fix for images in carousel mode */
+.user-message.has-multiple-images .image-container.in-carousel,
+.carousel-enabled .user-message .image-container.in-carousel {
+    display: none !important;
 }
 
