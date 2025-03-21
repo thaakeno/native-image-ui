@@ -39,8 +39,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // Default system instruction
     const DEFAULT_SYSTEM_INSTRUCTION = "You are an advanced AI assistant. Be helpful, accurate, and concise in your responses. If you're unsure about something, acknowledge it rather than making up information. You can generate both text responses and images based on user requests.";
 
-    // Array to store uploaded images
+    // Image upload variables
     let uploadedImages = [];
+    const MAX_IMAGES = 8;
+    const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+    const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'];
 
     // Configure marked renderer with syntax highlighting
     marked.setOptions({
@@ -258,6 +261,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const items = (event.clipboardData || event.clipboardData).items;
         let blob = null;
 
+        // If already at max images, don't process pasted content
+        if (uploadedImages.length >= MAX_IMAGES) {
+            showError(`Maximum of ${MAX_IMAGES} images already reached`);
+            return;
+        }
+
         for (let i = 0; i < items.length; i++) {
             if (items[i].type.indexOf("image") === 0) {
                 blob = items[i].getAsFile();
@@ -266,6 +275,24 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (blob !== null) {
+            // Check if it's a GIF
+            if (blob.type === 'image/gif') {
+                showError('GIF uploads are not allowed');
+                return;
+            }
+            
+            // Check file type
+            if (!ALLOWED_MIME_TYPES.includes(blob.type)) {
+                showError(`Pasted image has unsupported format (${blob.type})`);
+                return;
+            }
+            
+            // Check file size
+            if (blob.size > MAX_FILE_SIZE) {
+                showError('Pasted image exceeds 5MB limit');
+                return;
+            }
+
             const reader = new FileReader();
             reader.onload = (event) => {
                 const imageData = event.target.result;
@@ -460,13 +487,43 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Image upload
     imageUploadButton.addEventListener('click', () => {
+        if (uploadedImages.length >= MAX_IMAGES) {
+            showError(`Maximum of ${MAX_IMAGES} images allowed`);
+            return;
+        }
         imageInput.click();
     });
 
     imageInput.addEventListener('change', (e) => {
         if (e.target.files.length > 0) {
-            const file = e.target.files[0];
-            if (file.type.startsWith('image/')) {
+            const remainingSlots = MAX_IMAGES - uploadedImages.length;
+            
+            if (e.target.files.length > remainingSlots) {
+                showError(`You can only upload ${remainingSlots} more image${remainingSlots !== 1 ? 's' : ''}`);
+            }
+            
+            // Process only as many files as we have slots for
+            const filesToProcess = Array.from(e.target.files).slice(0, remainingSlots);
+            
+            for (const file of filesToProcess) {
+                // Check if it's a GIF
+                if (file.type === 'image/gif') {
+                    showError('GIF uploads are not allowed');
+                    continue;
+                }
+                
+                // Check file type
+                if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+                    showError(`${file.name} has unsupported format`);
+                    continue;
+                }
+                
+                // Check file size
+                if (file.size > MAX_FILE_SIZE) {
+                    showError(`${file.name} exceeds 5MB limit`);
+                    continue;
+                }
+                
                 const reader = new FileReader();
                 reader.onload = (event) => {
                     const imageData = event.target.result;
@@ -494,10 +551,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     img.src = imageData;
                 };
                 reader.readAsDataURL(file);
-                imageInput.value = '';
-            } else {
-                showError('Only image files are allowed');
             }
+            imageInput.value = '';
         }
     });
 
@@ -513,6 +568,19 @@ document.addEventListener('DOMContentLoaded', () => {
         // Create preview container
         const previewContainer = document.createElement('div');
         previewContainer.className = 'image-preview-container';
+        
+        // Add image counter badge
+        const counter = document.createElement('div');
+        counter.className = 'image-upload-counter';
+        counter.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                <polyline points="21 15 16 10 5 21"></polyline>
+            </svg>
+            <span>${uploadedImages.length}/${MAX_IMAGES}</span>
+        `;
+        previewContainer.appendChild(counter);
 
         // Add each image preview
         uploadedImages.forEach((img, index) => {
@@ -530,14 +598,46 @@ document.addEventListener('DOMContentLoaded', () => {
                 uploadedImages.splice(index, 1);
                 showImagePreviews();
             });
+            
+            // Add file size info
+            const fileSize = formatFileSize(img.file.size);
+            const infoElement = document.createElement('div');
+            infoElement.className = 'image-preview-info';
+            infoElement.textContent = fileSize;
 
             previewDiv.appendChild(imgElement);
             previewDiv.appendChild(removeButton);
+            previewDiv.appendChild(infoElement);
             previewContainer.appendChild(previewDiv);
         });
+        
+        // Add max limit reached message if applicable
+        if (uploadedImages.length >= MAX_IMAGES) {
+            const limitMessage = document.createElement('div');
+            limitMessage.className = 'image-upload-limit-reached';
+            limitMessage.textContent = 'Maximum number of images reached';
+            previewContainer.appendChild(limitMessage);
+            
+            // Disable the upload button
+            imageUploadButton.classList.add('disabled');
+        } else {
+            // Make sure the upload button is enabled
+            imageUploadButton.classList.remove('disabled');
+        }
 
         // Add to DOM before the input wrapper
         inputWrapper.parentNode.insertBefore(previewContainer, inputWrapper);
+    }
+
+    // Helper function to format file size
+    function formatFileSize(bytes) {
+        if (bytes < 1024) {
+            return bytes + ' B';
+        } else if (bytes < 1024 * 1024) {
+            return (bytes / 1024).toFixed(1) + ' KB';
+        } else {
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
     }
 
     // Initialize Gemini API if key exists
@@ -902,13 +1002,7 @@ document.addEventListener('DOMContentLoaded', () => {
         addAIMessageButtons(messageDiv);
 
         // Auto-scroll to the new message
-        requestAnimationFrame(() => {
-            messageDiv.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'end',
-                    inline: 'nearest'
-                });
-        });
+        scrollToBottom({ smooth: true });
 
         // Make the last user message editable
         const userMessages = Array.from(messagesContainer.querySelectorAll('.user-message'));
@@ -941,18 +1035,8 @@ document.addEventListener('DOMContentLoaded', () => {
         messageDiv.appendChild(messageContent);
         messagesContainer.appendChild(messageDiv);
 
-        requestAnimationFrame(() => {
-            const lastMessage = messagesContainer.lastElementChild;
-            if (lastMessage) {
-                lastMessage.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'end',
-                    inline: 'nearest'
-                });
-            } else {
-                messagesContainer.scrollTop = messagesContainer.scrollHeight;
-            }
-        });
+        // Replace the requestAnimationFrame and scrollIntoView call
+        scrollToBottom({ smooth: true });
 
         if (className === 'user-message') {
             const messageElements = messagesContainer.querySelectorAll('.message');
@@ -979,13 +1063,8 @@ document.addEventListener('DOMContentLoaded', () => {
         messageDiv.appendChild(innerDiv);
         messagesContainer.appendChild(messageDiv);
 
-        requestAnimationFrame(() => {
-            messageDiv.scrollIntoView({
-                behavior: 'smooth',
-                block: 'end',
-                inline: 'nearest'
-            });
-        });
+        // Replace the requestAnimationFrame and scrollIntoView call
+        scrollToBottom({ smooth: true });
     }
 
     function showError(message) {
@@ -994,13 +1073,8 @@ document.addEventListener('DOMContentLoaded', () => {
         errorDiv.textContent = message;
         messagesContainer.appendChild(errorDiv);
 
-        requestAnimationFrame(() => {
-            errorDiv.scrollIntoView({
-                behavior: 'smooth',
-                block: 'end',
-                inline: 'nearest'
-            });
-        });
+        // Replace the requestAnimationFrame and scrollIntoView call
+        scrollToBottom({ smooth: true });
 
         debugLog('Error shown', message);
 
@@ -1895,6 +1969,72 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // Fix scrolling issues with carousels - completely new implementation
+    function scrollToBottom(options = {}) {
+        // Cancel any pending scroll operations
+        if (window._scrollTimer) {
+            clearTimeout(window._scrollTimer);
+        }
+
+        // Use RAF for smoother scrolling
+        requestAnimationFrame(() => {
+            // First attempt - immediate scroll to bottom
+            messagesContainer.scrollTop = messagesContainer.scrollHeight + 2000;
+            
+            // Check if we need to wait for images to load
+            const loadingImages = messagesContainer.querySelectorAll('.message img:not([complete]), .carousel-slide img:not([complete])');
+            const loadingCarousels = messagesContainer.querySelectorAll('.image-carousel:not(.loaded)');
+            
+            if (loadingImages.length > 0 || loadingCarousels.length > 0) {
+                // Set up listeners for image load events
+                loadingImages.forEach(img => {
+                    if (!img.complete) {
+                        img.addEventListener('load', () => attemptScroll(), { once: true });
+                    }
+                });
+                
+                // Also wait a bit for carousel animations
+                window._scrollTimer = setTimeout(attemptScroll, 500);
+                
+                // Try again after a longer delay as safety net
+                setTimeout(finalScroll, 1000);
+            } else {
+                // No images to wait for, do final scroll immediately
+                finalScroll();
+            }
+        });
+        
+        // Function to scroll after images have loaded
+        function attemptScroll() {
+            messagesContainer.scrollTop = messagesContainer.scrollHeight + 2000;
+            
+            // Get the last message
+            const allMessages = messagesContainer.querySelectorAll('.message');
+            if (allMessages.length > 0) {
+                const lastMessage = allMessages[allMessages.length - 1];
+                lastMessage.scrollIntoView({
+                    behavior: options.smooth ? 'smooth' : 'auto',
+                    block: 'end'
+                });
+            }
+        }
+        
+        // Final failsafe scroll - this ensures we eventually scroll even if something went wrong
+        function finalScroll() {
+            // Force scroll one last time
+            messagesContainer.scrollTop = messagesContainer.scrollHeight + 2000;
+            
+            // Also grab any new messages that appeared
+            const allMessages = messagesContainer.querySelectorAll('.message');
+            if (allMessages.length > 0) {
+                allMessages[allMessages.length - 1].scrollIntoView({
+                    behavior: 'auto',
+                    block: 'end'
+                });
+            }
+        }
+    }
+
     function renderStoredMessages(messages) {
         // Start with a clean slate
         messagesContainer.innerHTML = '';
@@ -1998,10 +2138,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // Scroll to bottom
-        requestAnimationFrame(() => {
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-        });
+        // Update the scrolling at the end
+        scrollToBottom();
     }
 
     // Initialize API if key exists

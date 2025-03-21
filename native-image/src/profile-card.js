@@ -12,6 +12,7 @@ function initProfileCard() {
     const closeButton = document.querySelector('.profile-modal-close');
     const websimLink = document.querySelector('.profile-modal-link.websim-link');
     const githubLink = document.querySelector('.profile-modal-link.github-link');
+    const profileGithubLink = document.querySelector('.profile-link.github-link');
     const xLink = document.querySelector('.profile-modal-link.x-link');
     const profileName = document.querySelector('.profile-name');
     
@@ -19,6 +20,14 @@ function initProfileCard() {
     if (profileName) {
         profileName.addEventListener('click', () => {
             window.open('https://websim.ai/@thaakeno', '_blank');
+        });
+    }
+    
+    // Handle GitHub links to open releases panel instead of redirecting
+    if (profileGithubLink) {
+        profileGithubLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            // The event handlers are now in github-releases.js
         });
     }
     
@@ -67,6 +76,13 @@ function initProfileCard() {
             
             githubLink.addEventListener('mouseleave', () => {
                 githubLink.style.transform = '';
+            });
+            
+            // Make modal GitHub link also open releases panel
+            githubLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                closeProfileModal();
+                // The event handlers are now in github-releases.js
             });
         }
         

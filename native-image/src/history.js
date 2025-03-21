@@ -4,12 +4,14 @@ class ChatHistory {
         this.conversations = [];
         this.currentConversationId = null;
         this.activeTab = 'all'; // all, favorites, or pinned
+        this.totalStorageSize = 0; // Track total storage size
         
         // DOM elements
         this.historyPanel = null;
         this.historyContent = null;
         this.historyToggle = null;
         this.overlay = null;
+        this.storageSizeDisplay = null; // Element to display storage size
         
         // IndexedDB instance
         this.db = null;
@@ -17,6 +19,7 @@ class ChatHistory {
         // Kick off async initialization
         this.init().then(() => {
             this.debugLog('Chat history initialized', { conversationCount: this.conversations.length });
+            this.calculateTotalStorageSize();
         }).catch(error => {
             console.error('Failed to initialize IndexedDB', error);
         });
@@ -107,13 +110,16 @@ class ChatHistory {
         this.historyPanel.className = 'history-panel';
         this.historyPanel.innerHTML = `
             <div class="history-header">
-                <h2>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <polyline points="12 6 12 12 16 14"></polyline>
-                    </svg>
-                    Chat History
-                </h2>
+                <div class="header-title-container">
+                    <h2>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 6 12 12 16 14"></polyline>
+                        </svg>
+                        Chat History
+                    </h2>
+                    <div class="storage-size-display">0 Bytes used</div>
+                </div>
                 <button class="history-close">×</button>
             </div>
             <div class="history-tabs">
@@ -141,8 +147,9 @@ class ChatHistory {
         `;
         document.body.appendChild(this.historyPanel);
         
-        // Store reference to content area
+        // Store reference to content area and storage size display
         this.historyContent = this.historyPanel.querySelector('.history-content');
+        this.storageSizeDisplay = this.historyPanel.querySelector('.storage-size-display');
         
         // Tab switching functionality
         const tabs = this.historyPanel.querySelectorAll('.history-tab');
@@ -226,6 +233,7 @@ class ChatHistory {
         if (this.historyPanel.classList.contains('open')) {
             document.body.style.overflow = 'hidden';
             this.renderConversationsList();
+            this.updateStorageSizeDisplay(); // Update storage size when panel opens
         } else {
             document.body.style.overflow = '';
         }
@@ -248,137 +256,203 @@ class ChatHistory {
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
                     </svg>
-                    <p>No conversations yet</p>
-                    <p>Start chatting to save your conversations here.</p>
+                    <p>No conversation history yet</p>
+                    <p>Start a new chat to see it here</p>
                 </div>
             `;
             return;
         }
         
-        let filteredConversations = this.conversations;
-        if (this.activeTab === 'favorites') {
-            filteredConversations = this.conversations.filter(conv => conv.favorite);
-            if (filteredConversations.length === 0) {
-                this.historyContent.innerHTML = `<div class="history-no-items">No favorite conversations found</div>`;
-                return;
-            }
-        } else if (this.activeTab === 'pinned') {
-            filteredConversations = this.conversations.filter(conv => conv.pinned);
-            if (filteredConversations.length === 0) {
-                this.historyContent.innerHTML = `<div class="history-no-items">No pinned conversations found</div>`;
-                return;
-            }
-        }
-        
-        filteredConversations.sort((a, b) => {
-            if (a.pinned && !b.pinned) return -1;
-            if (!a.pinned && b.pinned) return 1;
-            return new Date(b.lastUpdated) - new Date(a.lastUpdated);
-        });
-        
         const chatList = document.createElement('div');
         chatList.className = 'chat-list';
         
+        // Filter conversations based on active tab
+        let filteredConversations = [...this.conversations];
+        if (this.activeTab === 'favorites') {
+            filteredConversations = filteredConversations.filter(c => c.favorite);
+        } else if (this.activeTab === 'pinned') {
+            filteredConversations = filteredConversations.filter(c => c.pinned);
+        }
+        
+        // Sort by last updated (most recent first)
+        filteredConversations.sort((a, b) => {
+            // Pinned items first in ALL tab
+            if (this.activeTab === 'all') {
+                if (a.pinned && !b.pinned) return -1;
+                if (!a.pinned && b.pinned) return 1;
+            }
+            return new Date(b.lastUpdated) - new Date(a.lastUpdated);
+        });
+        
+        if (filteredConversations.length === 0) {
+            this.historyContent.innerHTML = `
+                <div class="empty-history">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                    <p>No ${this.activeTab === 'favorites' ? 'favorited' : 'pinned'} conversations yet</p>
+                </div>
+            `;
+            return;
+        }
+        
         filteredConversations.forEach(conversation => {
             const chatItem = document.createElement('div');
-            chatItem.className = 'chat-item';
-            if (conversation.id === this.currentConversationId) chatItem.classList.add('active');
-            if (conversation.pinned) chatItem.classList.add('pinned');
-            if (conversation.favorite) chatItem.classList.add('favorite');
+            chatItem.className = 'chat-item animate-in';
+            if (conversation.id === this.currentConversationId) {
+                chatItem.classList.add('active');
+            }
+            if (conversation.pinned) {
+                chatItem.classList.add('pinned');
+            }
+            if (conversation.favorite) {
+                chatItem.classList.add('favorite');
+            }
             
-            const date = new Date(conversation.lastUpdated);
-            const formattedDate = date.toLocaleDateString() + ' ' + 
-                date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            // Calculate conversation size
+            const size = this.calculateConversationSize(conversation);
+            const formattedSize = this.formatBytes(size);
             
-            let lastUserMessage = "";
+            // Get message count
+            const messageCount = conversation.messages ? conversation.messages.length : 0;
+            
+            // Format date
+            const lastUpdated = new Date(conversation.lastUpdated);
+            const now = new Date();
+            const diffTime = Math.abs(now - lastUpdated);
+            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+            let dateStr = '';
+            
+            if (diffDays === 0) {
+                // Today - show time
+                dateStr = lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            } else if (diffDays === 1) {
+                // Yesterday
+                dateStr = 'Yesterday';
+            } else if (diffDays < 7) {
+                // Within a week - show day name
+                const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                dateStr = days[lastUpdated.getDay()];
+            } else {
+                // More than a week - show date
+                dateStr = lastUpdated.toLocaleDateString();
+            }
+            
+            // Extract a preview of the conversation - get last user message
+            let previewText = '';
             if (conversation.messages && conversation.messages.length > 0) {
+                // Find the most recent user message
                 for (let i = conversation.messages.length - 1; i >= 0; i--) {
-                    const msg = conversation.messages[i];
-                    if (msg.role === 'user' && msg.parts && msg.parts.length > 0) {
-                        const textPart = msg.parts.find(p => p.text);
-                        if (textPart) {
-                            // Clean the text for display in chat history
-                            let cleanText = textPart.text;
-                            if (cleanText.includes("This is a system prompt for guidance")) {
-                                cleanText = cleanText.split("\n\n" + "This is a system prompt for guidance")[0];
-                            }
-                            if (cleanText.startsWith("User:")) {
-                                cleanText = cleanText.substring(5);
-                            }
-                            
-                            lastUserMessage = cleanText.substring(0, 120) + (cleanText.length > 120 ? '...' : '');
+                    const message = conversation.messages[i];
+                    if (message.role === 'user' && message.parts && message.parts.some(p => p.text)) {
+                        const textPart = message.parts.find(p => p.text);
+                        if (textPart && textPart.text) {
+                            previewText = textPart.text.substring(0, 60) + (textPart.text.length > 60 ? '...' : '');
                             break;
+                        }
+                    }
+                }
+                
+                // If no user message found, try to use an AI message
+                if (!previewText) {
+                    for (let i = conversation.messages.length - 1; i >= 0; i--) {
+                        const message = conversation.messages[i];
+                        if (message.role === 'model' && message.parts && message.parts.some(p => p.text)) {
+                            const textPart = message.parts.find(p => p.text);
+                            if (textPart && textPart.text) {
+                                previewText = textPart.text.substring(0, 60) + (textPart.text.length > 60 ? '...' : '');
+                                break;
+                            }
                         }
                     }
                 }
             }
             
-            const messageCount = conversation.messages ? conversation.messages.length : 0;
+            // Build badges
+            let badgesHTML = '';
+            if (conversation.pinned || conversation.favorite) {
+                badgesHTML = `<div class="chat-item-badges">`;
+                if (conversation.pinned) {
+                    badgesHTML += `<span class="badge pinned-badge">Pinned</span>`;
+                }
+                if (conversation.favorite) {
+                    badgesHTML += `<span class="badge favorite-badge">Favorite</span>`;
+                }
+                badgesHTML += `</div>`;
+            }
             
             chatItem.innerHTML = `
                 <div class="chat-item-header">
-                    <div>
-                        <h3 class="chat-item-title">${this.escapeHTML(conversation.title)}</h3>
-                        <div class="chat-item-date">${formattedDate}</div>
-                    </div>
+                    <div class="chat-item-title">${this.escapeHTML(conversation.title)}</div>
                     <div class="chat-item-actions">
-                        <button class="chat-action favorite ${conversation.favorite ? 'active' : ''}" data-id="${conversation.id}" data-tooltip="Favorite" aria-label="Toggle favorite">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="${conversation.favorite ? 'gold' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <button class="chat-action favorite ${conversation.favorite ? 'active' : ''}" data-id="${conversation.id}" title="Favorite">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="${conversation.favorite ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
                             </svg>
                         </button>
-                        <button class="chat-action pinned ${conversation.pinned ? 'active' : ''}" data-id="${conversation.id}" data-tooltip="Pin" aria-label="Toggle pin">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="${conversation.pinned ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <button class="chat-action pinned ${conversation.pinned ? 'active' : ''}" data-id="${conversation.id}" title="Pin">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <line x1="12" y1="17" x2="12" y2="22"></line>
-                                <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78-.9A2 2 0 0 0 5 15.24Z"></path>
+                                <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"></path>
                             </svg>
                         </button>
-                        <button class="chat-action rename-chat" data-id="${conversation.id}" data-tooltip="Rename" aria-label="Rename conversation">
+                        <button class="chat-action rename" data-id="${conversation.id}" title="Rename">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M12 20h9"></path>
-                                <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path>
+                                <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
                             </svg>
                         </button>
-                        <button class="chat-action delete-chat" data-id="${conversation.id}" data-tooltip="Delete" aria-label="Delete conversation">
+                        <button class="chat-action delete" data-id="${conversation.id}" title="Delete">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <polyline points="3 6 5 6 21 6"></polyline>
-                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                                <line x1="10" y1="11" x2="10" y2="17"></line>
-                                <line x1="14" y1="11" x2="14" y2="17"></line>
+                                <path d="M3 6h18"></path>
+                                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
                             </svg>
                         </button>
                     </div>
                 </div>
-                ${lastUserMessage ? `<div class="chat-item-preview">${this.escapeHTML(lastUserMessage)}</div>` : ''}
+                ${badgesHTML}
+                <div class="chat-item-preview">${this.escapeHTML(previewText)}</div>
                 <div class="chat-item-metadata">
-                    <div class="chat-message-count">
+                    <div class="chat-item-date">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 6 12 12 16 14"></polyline>
+                        </svg>
+                        ${dateStr}
+                    </div>
+                    <div class="chat-message-count" title="${messageCount} messages, ${formattedSize}">
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
                         </svg>
-                        ${messageCount} message${messageCount !== 1 ? 's' : ''}
-                    </div>
-                    <div class="chat-item-badges">
-                        ${conversation.pinned ? '<span class="badge pinned-badge"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="17" x2="12" y2="22"></line><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78-.9A2 2 0 0 0 5 15.24Z"></path></svg> Pinned</span>' : ''}
-                        ${conversation.favorite ? '<span class="badge favorite-badge"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="gold" stroke="gold" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg> Favorite</span>' : ''}
+                        <span>${messageCount} • ${formattedSize}</span>
                     </div>
                 </div>
             `;
             
+            // Add load event listener
             chatItem.addEventListener('click', (e) => {
-                if (!e.target.closest('.chat-action')) {
-                    this.loadConversation(conversation.id);
+                const target = e.target;
+                
+                // Don't load if clicking on any of the action buttons
+                if (target.closest('.chat-action')) {
+                    return;
                 }
+                
+                this.loadConversation(conversation.id);
             });
             
             chatList.appendChild(chatItem);
         });
         
         this.historyContent.appendChild(chatList);
+        
+        // Add event listeners for action buttons
         this.addActionListeners();
     }
     
     addActionListeners() {
-        this.historyContent.querySelectorAll('.rename-chat').forEach(button => {
+        this.historyContent.querySelectorAll('.rename').forEach(button => {
             button.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const id = button.dataset.id;
@@ -386,7 +460,7 @@ class ChatHistory {
             });
         });
         
-        this.historyContent.querySelectorAll('.delete-chat').forEach(button => {
+        this.historyContent.querySelectorAll('.delete').forEach(button => {
             button.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const id = button.dataset.id;
@@ -487,80 +561,92 @@ class ChatHistory {
         const conversation = this.conversations.find(c => c.id === id);
         if (!conversation) return;
         
-        const chatItemSelector = `.chat-item .rename-chat[data-id="${id}"]`;
+        const chatItemSelector = `.chat-item .rename[data-id="${id}"]`;
         const chatActionButton = this.historyContent.querySelector(chatItemSelector);
         if (!chatActionButton) {
-            this.debugLog('Rename button not found in DOM', { id });
+            this.debugLog('Rename button not found', { id });
             return;
         }
         
         const chatItem = chatActionButton.closest('.chat-item');
-        if (!chatItem) {
-            this.debugLog('Chat item not found from rename button', { id });
-            return;
-        }
+        const titleElement = chatItem.querySelector('.chat-item-title');
+        const originalTitle = conversation.title;
         
-        const titleEl = chatItem.querySelector('.chat-item-title');
-        if (!titleEl) {
-            this.debugLog('Title element not found in chat item', { id });
-            return;
-        }
+        // Hide the original title
+        titleElement.style.display = 'none';
         
-        const currentTitle = conversation.title;
-        titleEl.style.display = 'none';
+        // Create an input for editing
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'rename-input';
+        input.value = originalTitle;
+        input.setAttribute('maxlength', '50');
+        titleElement.parentNode.insertBefore(input, titleElement);
         
-        const inputEl = document.createElement('input');
-        inputEl.type = 'text';
-        inputEl.className = 'rename-input';
-        inputEl.value = currentTitle;
-        chatItem.querySelector('.chat-item-header').insertBefore(inputEl, titleEl.parentNode);
+        // Focus the input
+        input.focus();
+        input.select();
         
-        inputEl.focus();
-        inputEl.select();
+        // Disable click event on the chat item while editing
+        chatItem.style.pointerEvents = 'none';
         
-        let inputHandled = false;
+        // Enable click events on the input
+        input.style.pointerEvents = 'auto';
+        
+        // Function to save the updated title
         const saveNewTitle = () => {
-            if (inputHandled) return;
-            inputHandled = true;
-            const newTitle = inputEl.value.trim();
-            if (newTitle && newTitle !== currentTitle) {
+            const newTitle = input.value.trim();
+            
+            // Restore original state
+            titleElement.style.display = '';
+            chatItem.style.pointerEvents = '';
+            input.remove();
+            
+            // If input is not empty, update the title
+            if (newTitle && newTitle !== originalTitle) {
+                titleElement.textContent = newTitle;
                 conversation.title = newTitle;
+                conversation.needsTitleGeneration = false;
                 this.saveToStorage();
-                titleEl.textContent = newTitle;
-                this.debugLog('Renamed conversation', { id, newTitle });
+                this.debugLog('Renamed conversation', { id, oldTitle: originalTitle, newTitle });
             }
-            titleEl.style.display = '';
-            if (inputEl.parentNode) inputEl.parentNode.removeChild(inputEl);
         };
         
-        inputEl.addEventListener('keydown', (e) => {
+        // Handle input events
+        input.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
                 e.preventDefault();
                 saveNewTitle();
             } else if (e.key === 'Escape') {
-                e.preventDefault();
-                inputHandled = true;
-                titleEl.style.display = '';
-                if (inputEl.parentNode) inputEl.parentNode.removeChild(inputEl);
+                // Cancel editing
+                titleElement.style.display = '';
+                chatItem.style.pointerEvents = '';
+                input.remove();
             }
+            e.stopPropagation();
         });
-        inputEl.addEventListener('blur', saveNewTitle);
+        
+        input.addEventListener('blur', saveNewTitle);
     }
     
     deleteConversation(id) {
-        if (!confirm('Are you sure you want to delete this conversation?')) return;
-        this.conversations = this.conversations.filter(c => c.id !== id);
-        if (this.currentConversationId === id) {
-            this.currentConversationId = null;
-            this.app.clearChat(true);
-        }
-        this.saveToStorage();
-        this.renderConversationsList();
-        this.debugLog('Deleted conversation', { id });
+        const conversation = this.conversations.find(c => c.id === id);
+        if (!conversation) return;
+        
+        // Calculate size before deletion
+        const conversationSize = this.calculateConversationSize(conversation);
+        const formattedSize = this.formatBytes(conversationSize);
+        
+        const confirmMessage = `Are you sure you want to delete this conversation? (${formattedSize})`;
+        if (!confirm(confirmMessage)) return;
+        
+        // Delete the conversation
+        this.deleteConversationById(id);
+        
+        // Show a notification about freed space
+        this.showStorageNotification(`Freed up ${formattedSize} of storage`);
     }
     
-    // New method to delete conversation by ID without confirmation
-    // Used when a conversation becomes empty after message deletion
     deleteConversationById(id) {
         if (!id) return false;
         
@@ -583,9 +669,13 @@ class ChatHistory {
         // Save to storage
         this.saveToStorage();
         
+        // Recalculate total storage size
+        this.calculateTotalStorageSize();
+        
         // Update UI if history panel is open
         if (this.historyPanel && this.historyPanel.classList.contains('open')) {
             this.renderConversationsList();
+            this.updateStorageSizeDisplay();
         }
         
         this.debugLog('Successfully deleted conversation by ID', { id, remainingConversations: this.conversations.length });
@@ -593,12 +683,25 @@ class ChatHistory {
     }
     
     clearAllHistory() {
-        if (!confirm('Are you sure you want to delete all conversations? This cannot be undone.')) return;
+        // Calculate total size before clearing
+        const totalSize = this.totalStorageSize;
+        const formattedSize = this.formatBytes(totalSize);
+        
+        if (!confirm(`Are you sure you want to delete all conversations? This will free up ${formattedSize} and cannot be undone.`)) return;
+        
         this.conversations = [];
         this.currentConversationId = null;
         this.saveToStorage();
         this.renderConversationsList();
         this.app.clearChat(true);
+        
+        // Update storage size to zero
+        this.totalStorageSize = 0;
+        this.updateStorageSizeDisplay();
+        
+        // Show notification about freed space
+        this.showStorageNotification(`Freed up ${formattedSize} of storage`);
+        
         this.debugLog('Cleared all conversation history');
     }
     
@@ -632,6 +735,9 @@ class ChatHistory {
                     this.currentConversationId = null;
                     this.saveToStorage();
                     
+                    // Update storage size
+                    this.calculateTotalStorageSize();
+                    
                     // Force render the conversations list to reflect changes immediately
                     if (this.historyPanel && this.historyPanel.classList.contains('open')) {
                         this.renderConversationsList();
@@ -655,6 +761,10 @@ class ChatHistory {
                         this.generateTitleFromContent(existingConversation);
                     }
                     this.saveToStorage();
+                    
+                    // Update storage size
+                    this.calculateTotalStorageSize();
+                    
                     this.debugLog('Updated existing conversation', { 
                         id: this.currentConversationId,
                         forceUpdate: forceUpdate,
@@ -690,6 +800,10 @@ class ChatHistory {
         this.conversations.push(newConversation);
         this.currentConversationId = newConversation.id;
         this.saveToStorage();
+        
+        // Update storage size for new conversation
+        this.calculateTotalStorageSize();
+        
         this.debugLog('Created new conversation', { id: newConversation.id, title });
     }
     
@@ -761,5 +875,72 @@ class ChatHistory {
                 this.app.debugLog(`[History] ${message}`, data);
             }
         }
+    }
+    
+    // Calculate size of a single conversation in bytes
+    calculateConversationSize(conversation) {
+        // Convert the conversation object to JSON string and measure its length
+        const jsonString = JSON.stringify(conversation);
+        return new Blob([jsonString]).size;
+    }
+    
+    // Calculate total storage size of all conversations
+    calculateTotalStorageSize() {
+        let totalSize = 0;
+        
+        for (const conversation of this.conversations) {
+            totalSize += this.calculateConversationSize(conversation);
+        }
+        
+        this.totalStorageSize = totalSize;
+        this.updateStorageSizeDisplay();
+        return totalSize;
+    }
+    
+    // Update the storage size display in the UI
+    updateStorageSizeDisplay() {
+        if (this.storageSizeDisplay) {
+            this.storageSizeDisplay.textContent = `${this.formatBytes(this.totalStorageSize)} used`;
+        }
+    }
+    
+    // Format bytes to human-readable format
+    formatBytes(bytes, decimals = 2) {
+        if (bytes === 0) return '0 Bytes';
+        
+        const k = 1024;
+        const dm = decimals < 0 ? 0 : decimals;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+        
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+    }
+    
+    // Show a notification about storage changes
+    showStorageNotification(message) {
+        const notification = document.createElement('div');
+        notification.className = 'storage-notification';
+        notification.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10z"></path>
+            </svg>
+            <span>${message}</span>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        // Trigger animation
+        setTimeout(() => {
+            notification.classList.add('show');
+        }, 10);
+        
+        // Remove after animation completes
+        setTimeout(() => {
+            notification.classList.remove('show');
+            setTimeout(() => {
+                notification.remove();
+            }, 500);
+        }, 3000);
     }
 }

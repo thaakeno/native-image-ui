@@ -598,11 +598,34 @@ class ImageViewer {
             if (i === index) {
                 thumb.classList.add('active');
                 
-                // Scroll thumbnail into view if needed
-                if (typeof thumb.scrollIntoView === 'function') {
-                    setTimeout(() => {
-                        thumb.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-                    }, 300);
+                // Prevent main content scrolling - only scroll within the thumbnail container
+                const thumbnailsContainer = carousel.querySelector('.carousel-thumbnails');
+                if (thumbnailsContainer && thumb) {
+                    // Get the parent container
+                    const container = thumbnailsContainer;
+                    const thumbLeft = thumb.offsetLeft;
+                    const containerWidth = container.clientWidth;
+                    const scrollLeft = container.scrollLeft;
+                    
+                    // Calculate the position needed to center the thumbnail
+                    const newScrollLeft = thumbLeft - (containerWidth / 2) + (thumb.offsetWidth / 2);
+                    
+                    // Smoothly scroll only within the container without affecting the page
+                    // Use requestAnimationFrame to ensure this doesn't interfere with page scrolling
+                    requestAnimationFrame(() => {
+                        // Use direct scrollLeft assignment instead of scrollTo for better compatibility
+                        // with ongoing page scroll operations
+                        try {
+                            // Method 1: Use scrollTo with a catch in case it conflicts with page scrolling
+                            container.scrollTo({
+                                left: newScrollLeft,
+                                behavior: 'smooth'
+                            });
+                        } catch (e) {
+                            // Method 2: Direct property setting as fallback
+                            container.scrollLeft = newScrollLeft;
+                        }
+                    });
                 }
             } else {
                 thumb.classList.remove('active');

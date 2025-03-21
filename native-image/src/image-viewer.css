@@ -348,13 +348,22 @@ body:not(.carousel-enabled) .user-message .image-container {
 .carousel-thumbnails {
     display: flex;
     overflow-x: auto;
-    padding: 16px;
-    background: rgba(0, 0, 0, 0.03);
-    gap: 12px;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    overflow-y: hidden;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
     scrollbar-width: thin;
-    scrollbar-color: rgba(var(--text-accent-rgb), 0.5) transparent;
-    justify-content: center;
+    scrollbar-color: rgba(var(--accent-rgb), 0.3) transparent;
+    padding: 10px 0;
+    margin: 0 -5px;
+    max-width: 100%;
+    /* Prevent scroll chaining to the main page */
+    overscroll-behavior-x: contain;
+    /* Prevent unwanted vertical scrolls */
+    overscroll-behavior-y: none;
+    /* Optimize for smooth scrolling */
+    will-change: scroll-position;
+    /* Force a separate layer */
+    transform: translateZ(0);
 }
 
 .carousel-thumbnails::-webkit-scrollbar {
