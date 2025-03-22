@@ -111,13 +111,13 @@ class ChatHistory {
         this.historyPanel.innerHTML = `
             <div class="history-header">
                 <div class="header-title-container">
-                    <h2>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <polyline points="12 6 12 12 16 14"></polyline>
-                        </svg>
-                        Chat History
-                    </h2>
+                <h2>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                    Chat History
+                </h2>
                     <div class="storage-size-display">0 Bytes used</div>
                 </div>
                 <button class="history-close">×</button>
@@ -278,8 +278,8 @@ class ChatHistory {
         filteredConversations.sort((a, b) => {
             // Pinned items first in ALL tab
             if (this.activeTab === 'all') {
-                if (a.pinned && !b.pinned) return -1;
-                if (!a.pinned && b.pinned) return 1;
+            if (a.pinned && !b.pinned) return -1;
+            if (!a.pinned && b.pinned) return 1;
             }
             return new Date(b.lastUpdated) - new Date(a.lastUpdated);
         });
@@ -361,7 +361,7 @@ class ChatHistory {
                             const textPart = message.parts.find(p => p.text);
                             if (textPart && textPart.text) {
                                 previewText = textPart.text.substring(0, 60) + (textPart.text.length > 60 ? '...' : '');
-                                break;
+                            break;
                             }
                         }
                     }
