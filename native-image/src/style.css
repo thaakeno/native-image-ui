@@ -2319,4 +2319,64 @@ input:checked + .slider:before {
     object-fit: cover;
 }
 
+/* Prompter Toggle Button */
+.prompter-toggle-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    padding: 8px;
+    border: none;
+    border-radius: 50%;
+    background: var(--primary-color-lightest);
+    color: var(--primary-color);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-right: 10px;
+    position: relative;
+    overflow: hidden;
+}
+
+.prompter-toggle-btn:hover {
+    background: var(--primary-color-light);
+    transform: translateY(-2px);
+}
+
+.prompter-toggle-btn:active {
+    transform: translateY(0);
+}
+
+.prompter-toggle-btn svg {
+    width: 20px;
+    height: 20px;
+    transition: all 0.2s ease;
+}
+
+.prompter-toggle-btn.pulse::after {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background: var(--primary-color-lightest);
+    border-radius: 50%;
+    opacity: 0.6;
+    transform: scale(0);
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(0.8);
+        opacity: 0.6;
+    }
+    50% {
+        opacity: 0;
+    }
+    100% {
+        transform: scale(1.5);
+        opacity: 0;
+    }
+}
+
 

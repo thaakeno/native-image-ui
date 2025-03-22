@@ -81,6 +81,24 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Set carousel toggle initial state
     carouselToggle.checked = config.carouselEnabled;
+    
+    // Initialize animation prompter toggle
+    const prompterToggle = document.getElementById('prompter-toggle');
+    if (prompterToggle) {
+        const prompterEnabled = localStorage.getItem('prompterEnabled') === 'true';
+        prompterToggle.checked = prompterEnabled;
+        
+        // Save setting when changed
+        prompterToggle.addEventListener('change', (e) => {
+            const isEnabled = e.target.checked;
+            localStorage.setItem('prompterEnabled', isEnabled);
+            
+            // Update prompter UI if it's initialized
+            if (window.prompter) {
+                window.prompter.updatePrompterState(isEnabled);
+            }
+        });
+    }
 
     // Initialize theme selection
     const themeSelector = document.getElementById('theme-selector');
@@ -2945,5 +2963,31 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         return messageElement;
+    }
+
+    // Initialize settings
+    function initSettings() {
+        // Existing code for API key, temperature, etc...
+        
+        // Initialize prompter toggle
+        const prompterToggle = document.getElementById('prompter-toggle');
+        if (prompterToggle) {
+            // Get the saved setting from localStorage or default to false
+            const prompterEnabled = localStorage.getItem('prompterEnabled') === 'true';
+            prompterToggle.checked = prompterEnabled;
+            
+            // Save setting when changed
+            prompterToggle.addEventListener('change', (e) => {
+                const isEnabled = e.target.checked;
+                localStorage.setItem('prompterEnabled', isEnabled);
+                
+                // Update prompter UI if it's initialized
+                if (window.prompter) {
+                    window.prompter.updatePrompterState(isEnabled);
+                }
+            });
+        }
+        
+        // Rest of the existing settings code...
     }
 });
