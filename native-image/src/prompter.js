@@ -3892,6 +3892,85 @@ Only return the JSON structure without additional text.`
             }, 300);
         }
     }
+
+    // --- ADDED: Method to generate random examples ---
+    async generateRandomExamples() {
+        console.log("DEBUG: Generating new random examples...");
+        try {
+            if (!window.app || !window.app.model) {
+                throw new Error('Gemini model not available.');
+            }
+
+            const exampleGenPrompt = {
+                contents: [{
+                    role: 'user',
+                    parts: [{
+                        text: `You are an AI assistant helping generate creative animation ideas. Provide 2 diverse and exciting animation prompt examples suitable for a frame-by-frame generation tool.
+
+Each example should have:
+1.  A short, catchy "title" (max 5 words).
+2.  A detailed "description" (3-5 sentences) outlining the animation sequence, key visual elements, style, and mood. The description should be inspiring and provide enough detail for an AI image generator to create distinct frames.
+
+Focus on variety: include different styles (e.g., pixel art, anime, cinematic, abstract), themes (e.g., sci-fi, fantasy, slice-of-life, action), and complexity. Make them *interesting* and *dynamic*. Avoid generic or overly simple ideas.
+
+Format the output strictly as a JSON array containing two objects, like this:
+[
+  {
+    "title": "Example Title One",
+    "description": "Detailed description for the first animation idea..."
+  },
+  {
+    "title": "Example Title Two",
+    "description": "Detailed description for the second animation idea..."
+  }
+]
+
+Do not include any text outside this JSON structure.`
+                    }]
+                }],
+                generationConfig: {
+                    temperature: 0.85, // Slightly higher temp for more creativity
+                    topP: 0.95,
+                    topK: 40,
+                    maxOutputTokens: 500 // Enough for two detailed examples
+                }
+            };
+
+            const result = await window.app.model.generateContent(exampleGenPrompt);
+
+            if (!result || !result.response) {
+                throw new Error('No response from API when generating examples.');
+            }
+
+            const responseText = result.response.text();
+            console.log("DEBUG: Raw examples response:", responseText);
+
+            // Try parsing the JSON
+            try {
+                const jsonMatch = responseText.match(/\[[\s\S]*\]/); // Find the array within potential extra text
+                if (jsonMatch) {
+                    const examples = JSON.parse(jsonMatch[0]);
+                    if (Array.isArray(examples) && examples.length >= 2 && examples[0].title && examples[0].description) {
+                        console.log("DEBUG: Successfully parsed new examples:", examples);
+                        return examples.slice(0, 2); // Return the first two valid examples
+                    }
+                }
+                throw new Error('Parsed response is not a valid array of examples.');
+            } catch (parseError) {
+                console.error('Failed to parse example JSON:', parseError);
+                throw new Error(`Failed to understand the example structure from the API. Raw response logged.`);
+            }
+
+        } catch (error) {
+            console.error("Error generating random examples:", error);
+            // Return fallback examples in case of error
+            return [
+                { title: "API Error", description: "Couldn't fetch new examples due to an error. Using fallback." },
+                { title: "Cyberpunk Alley Chase", description: "A neon-drenched chase scene. Frame 1: Character sprints down a rainy alley. Frame 2: Close-up on dodging obstacles. Frame 3: Drone pursues overhead. Frame 4: Character leaps across a gap. Frame 5: Lands safely, looking back." }
+            ];
+        }
+    }
+    // --- END ADDED ---
 }
 
 // Initialize the prompter when the page loads
