@@ -809,9 +809,333 @@ header h1 {
     transition: all 0.3s ease;
 }
 
-#user-input::placeholder {
-    color: var(--input-placeholder);
+/* Improved prompter status label - more elegant and integrated */
+.prompter-status-label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin: 0 auto 12px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--primary-color);
+    padding: 6px 14px;
+    border-radius: 20px;
+    background: rgba(var(--text-accent-rgb), 0.08);
+    width: fit-content;
+    box-shadow: 0 2px 10px rgba(var(--text-accent-rgb), 0.15);
+    letter-spacing: 0.3px;
+    animation: fadeInDown 0.4s var(--animation-curve);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    border: 1px solid rgba(var(--text-accent-rgb), 0.15);
+    transform: translateY(2px);
+}
+
+.prompter-status-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary-color);
+    position: relative;
+    z-index: 1;
+}
+
+.prompter-status-icon::before {
+    content: '';
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    background: radial-gradient(circle, rgba(var(--text-accent-rgb), 0.3) 0%, transparent 70%);
+    border-radius: 50%;
+    z-index: -1;
+    animation: pulse 3s infinite ease-in-out;
+}
+
+/* Prompter toggle button with nebula effect */
+.prompter-toggle-btn {
+    position: relative;
+    width: 42px;
+    height: 42px;
+    border-radius: 14px;
+    background: var(--bg-tertiary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.4s cubic-bezier(0.19, 1, 0.22, 1);
+    border: none;
+    color: var(--text-secondary);
+    overflow: hidden;
+    box-shadow: 
+        0 3px 12px rgba(0, 0, 0, 0.12),
+        inset 0 1px 1px rgba(255, 255, 255, 0.1),
+        inset 0 -1px 1px rgba(0, 0, 0, 0.08);
+    margin: 0 8px;
+}
+
+.prompter-toggle-btn svg {
+    width: 18px;
+    height: 18px;
+    transition: all 0.4s cubic-bezier(0.19, 1, 0.22, 1);
+    z-index: 3;
+    filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.3));
+}
+
+/* Nebula background for button */
+.prompter-toggle-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(
+        circle at 30% 40%,
+        rgba(var(--text-accent-rgb), 0.3) 0%,
+        transparent 40%
+    ), radial-gradient(
+        circle at 70% 60%,
+        rgba(var(--text-accent-rgb), 0.2) 0%,
+        transparent 50%
+    );
+    opacity: 0;
+    transition: opacity 0.5s cubic-bezier(0.19, 1, 0.22, 1);
+    z-index: 1;
+}
+
+/* Star particles for nebula effect */
+.prompter-toggle-btn::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: 
+        radial-gradient(circle at 20% 30%, white 0%, transparent 1%),
+        radial-gradient(circle at 50% 60%, white 0%, transparent 0.8%),
+        radial-gradient(circle at 80% 40%, white 0%, transparent 1%),
+        radial-gradient(circle at 30% 70%, white 0%, transparent 0.6%),
+        radial-gradient(circle at 70% 20%, white 0%, transparent 0.5%),
+        radial-gradient(circle at 40% 50%, white 0%, transparent 0.7%),
+        radial-gradient(circle at 60% 80%, white 0%, transparent 0.8%);
+    background-size: 100% 100%;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+    z-index: 2;
+    filter: blur(1px);
+}
+
+.prompter-toggle-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 
+        0 6px 16px rgba(0, 0, 0, 0.16),
+        inset 0 1px 1px rgba(255, 255, 255, 0.15),
+        inset 0 -1px 1px rgba(0, 0, 0, 0.1);
+    color: var(--text-primary);
+}
+
+.prompter-toggle-btn:hover::before {
+    opacity: 1;
+    animation: nebulaShift 8s infinite alternate ease-in-out;
+}
+
+.prompter-toggle-btn:hover::after {
+    opacity: 0.6;
+    animation: starTwinkle 4s infinite alternate ease-in-out;
+}
+
+.prompter-toggle-btn:hover svg {
+    transform: scale(1.1);
+    filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.5));
+}
+
+.prompter-toggle-btn:active {
+    transform: translateY(0);
+    box-shadow: 
+        0 2px 5px rgba(0, 0, 0, 0.2),
+        inset 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.prompter-toggle-btn:active::before {
+    opacity: 1;
+    filter: brightness(1.2) saturate(1.2);
+    transition: all 0.1s ease;
+}
+
+.prompter-toggle-btn.active {
+    background: var(--bg-tertiary);
+    color: var(--primary-color);
+    box-shadow: 
+        0 3px 12px rgba(var(--text-accent-rgb), 0.3),
+        inset 0 1px 1px rgba(255, 255, 255, 0.2),
+        inset 0 -1px 1px rgba(0, 0, 0, 0.1);
+}
+
+.prompter-toggle-btn.active::before {
+    opacity: 1;
+    background: radial-gradient(
+        circle at 30% 40%,
+        rgba(var(--text-accent-rgb), 0.5) 0%,
+        transparent 50%
+    ), radial-gradient(
+        circle at 70% 60%,
+        rgba(var(--text-accent-rgb), 0.4) 0%,
+        transparent 60%
+    );
+    animation: nebulaShift 8s infinite alternate ease-in-out;
+}
+
+.prompter-toggle-btn.active::after {
+    opacity: 0.7;
+    animation: starTwinkle 4s infinite alternate ease-in-out;
+}
+
+.prompter-toggle-btn.active:hover {
+    transform: translateY(-2px);
+    box-shadow: 
+        0 6px 16px rgba(var(--text-accent-rgb), 0.4),
+        inset 0 1px 1px rgba(255, 255, 255, 0.3),
+        inset 0 -1px 1px rgba(0, 0, 0, 0.1);
+}
+
+/* Nebula animation keyframes */
+@keyframes nebulaShift {
+    0% {
+        background-position: 0% 0%;
     opacity: 0.8;
+    }
+    50% {
+        opacity: 1;
+    }
+    100% {
+        background-position: 100% 100%;
+        opacity: 0.9;
+    }
+}
+
+@keyframes starTwinkle {
+    0% {
+        opacity: 0.3;
+        background-position: 0% 0%;
+    }
+    50% {
+        opacity: 0.7;
+    }
+    100% {
+        opacity: 0.5;
+        background-position: 10% 20%;
+    }
+}
+
+/* Button tooltip */
+.prompter-btn-tooltip {
+    position: absolute;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    bottom: -36px;
+    white-space: nowrap;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(5px);
+    transition: all 0.3s ease;
+    pointer-events: none;
+    z-index: 100;
+}
+
+.prompter-btn-tooltip::before {
+    content: '';
+    position: absolute;
+    top: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 0 6px 6px 6px;
+    border-style: solid;
+    border-color: transparent transparent var(--bg-tertiary) transparent;
+}
+
+.prompter-toggle-btn:hover .prompter-btn-tooltip {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+/* Single shimmer animation effect with improved style */
+#user-input.prompter-shimmer {
+    position: relative;
+    overflow: hidden;
+}
+
+#user-input.prompter-shimmer::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 50%;
+    height: 100%;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(var(--text-accent-rgb), 0.3),
+        transparent
+    );
+    z-index: 100;
+    animation: shimmerEffect 1.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes shimmerEffect {
+    to {
+        left: 200%;
+    }
+}
+
+/* Input wrapper when prompter is active - 3D effect */
+.input-wrapper:has(#user-input.prompter-active) {
+    border-color: rgba(var(--text-accent-rgb), 0.3);
+    background: rgba(var(--background-secondary-rgb), 0.6);
+    box-shadow: 
+        0 3px 10px rgba(0, 0, 0, 0.08),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.05);
+    transform: translateY(-1px);
+    transition: all 0.4s var(--animation-curve);
+}
+
+/* Light theme adjustments */
+[data-theme="light"] .prompter-toggle-btn {
+    background: var(--bg-secondary);
+    box-shadow: 
+        0 3px 12px rgba(0, 0, 0, 0.08),
+        inset 0 1px 1px rgba(255, 255, 255, 0.7),
+        inset 0 -1px 1px rgba(0, 0, 0, 0.03);
+}
+
+[data-theme="light"] .prompter-toggle-btn::before {
+    filter: saturate(0.8);
+}
+
+[data-theme="light"] .prompter-toggle-btn:hover {
+    background: var(--bg-accent);
+}
+
+/* Tactile theme integration */
+[data-tactile="true"] .prompter-toggle-btn {
+    box-shadow: var(--tactile-shadow-out);
+    border-radius: 16px;
+}
+
+[data-tactile="true"] .prompter-toggle-btn:hover {
+    box-shadow: var(--tactile-shadow-hover);
+}
+
+[data-tactile="true"] .prompter-toggle-btn:active,
+[data-tactile="true"] .prompter-toggle-btn.active {
+    box-shadow: var(--tactile-shadow-in);
 }
 
 .upload-button {
@@ -2377,6 +2701,62 @@ input:checked + .slider:before {
         transform: scale(1.5);
         opacity: 0;
     }
+}
+
+/* Input styling when prompter is active */
+#user-input.prompter-active {
+    color: var(--text-primary);
+    border-color: var(--primary-color);
+}
+
+#user-input.prompter-active::placeholder {
+    color: var(--primary-color);
+    opacity: 0.7;
+}
+
+/* Button ripple effect */
+.button-ripple {
+    position: absolute;
+    background: rgba(var(--text-accent-rgb), 0.4);
+    border-radius: 50%;
+    transform: scale(0);
+    pointer-events: none;
+    z-index: 10;
+}
+
+.button-ripple.animate {
+    animation: ripple-effect 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes ripple-effect {
+    to {
+        transform: scale(1);
+        opacity: 0;
+    }
+}
+
+/* Enhanced status label with connected animation */
+.prompter-status-label.connected {
+    transform: translateY(0);
+    box-shadow: 0 3px 12px rgba(var(--text-accent-rgb), 0.2);
+}
+
+/* Connection line from label to input when active */
+.prompter-status-label::after {
+    content: '';
+    position: absolute;
+    bottom: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 2px;
+    height: 8px;
+    background: linear-gradient(to bottom, rgba(var(--text-accent-rgb), 0.3), transparent);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.prompter-status-label.connected::after {
+    opacity: 1;
 }
 
 

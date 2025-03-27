@@ -741,6 +741,67 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        // Check if the prompter is active and route message to it if so
+        if (window.prompter && window.prompter.isActive) {
+            // Create user message in the UI
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message user-message animate-in';
+            messageDiv.setAttribute('data-prompter', 'true');
+
+            // Create message content
+            const messageContent = document.createElement('div');
+            messageContent.className = 'message-content';
+
+            if (userMessage) {
+                const textDiv = document.createElement('div');
+                textDiv.className = 'user-text';
+                textDiv.textContent = userMessage;
+                messageContent.appendChild(textDiv);
+            }
+
+            // Add images if any
+            if (uploadedImages.length > 0) {
+                const imageGallery = document.createElement('div');
+                imageGallery.className = 'image-gallery';
+
+                uploadedImages.forEach(img => {
+                    const imgContainer = document.createElement('div');
+                    imgContainer.className = 'image-container';
+
+                    const imgElement = document.createElement('img');
+                    imgElement.src = img.data;
+
+                    imgContainer.appendChild(imgElement);
+                    imageGallery.appendChild(imgContainer);
+                });
+
+                messageContent.appendChild(imageGallery);
+            }
+
+            messageDiv.appendChild(messageContent);
+            messagesContainer.appendChild(messageDiv);
+
+            // Clear input
+            userInput.value = '';
+            userInput.style.height = 'auto';
+            
+            // Clear uploaded images
+            uploadedImages = [];
+            const previewContainer = document.querySelector('.image-preview-container');
+            if (previewContainer) {
+                previewContainer.remove();
+            }
+            
+            // Scroll to bottom
+            scrollToBottom();
+            
+            // Handle the message with the prompter
+            window.prompter.handleUserMessage(userMessage, uploadedImages);
+            
+            // Don't continue with normal message handling
+            return;
+        }
+
         // Create message container
         const messageDiv = document.createElement('div');
         messageDiv.className = 'message user-message animate-in';

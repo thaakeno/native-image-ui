@@ -4,15 +4,15 @@
  */
 class Prompter {
     constructor() {
-        this.isActive = false;
-        this.isEnabled = false;
+        this.isEnabled = false; // Whether the button is shown
+        this.isActive = false; // Whether the prompter conversation is active
+        this.welcomeMessageShown = false; // Track if welcome message has been shown
         this.currentPlan = null;
-        this.currentPromptIndex = 0;
-        this.generatedImages = [];
-        this.animationFrames = [];
-        this.animationIntervals = {};
-        this.selectedImages = [];
+        this.isGeneratingImage = false;
         this.isGeneratingAllFrames = false;
+        this.completionMessageShown = false; // Track if completion message has already been shown
+        this.animationIntervals = {}; // Store animation intervals by frame index
+        this.generatedImages = []; // Store generated image URLs
         this.app = window.app || {};
         
         // Initialize when DOM is loaded
@@ -41,6 +41,7 @@ class Prompter {
                 const isEnabled = e.target.checked;
                 localStorage.setItem('prompterEnabled', isEnabled);
                 this.updatePrompterState(isEnabled);
+                console.log(`DEBUG: Prompter toggle changed to ${isEnabled ? 'enabled' : 'disabled'}`);
             });
         }
         
@@ -77,8 +78,7 @@ class Prompter {
         });
     }
 
-    addPrompterButton() {
-        const inputWrapper = document.querySelector('.input-wrapper');
+    addPrompterButton(inputWrapper) {
         if (!inputWrapper) return;
         
         // Remove existing button if any
@@ -89,14 +89,15 @@ class Prompter {
         
         // Create the button
         const button = document.createElement('button');
-        button.className = 'prompter-toggle-btn pulse';
+        button.className = 'prompter-toggle-btn';
         button.innerHTML = `
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="12" cy="12" r="10"></circle>
                 <polygon points="10 8 16 12 10 16 10 8"></polygon>
             </svg>
+            <span class="prompter-btn-tooltip">Animation Prompter</span>
         `;
-        button.setAttribute('title', 'Open Animation Prompter');
+        button.setAttribute('title', 'Toggle Animation Prompter');
         
         // Add it to the input area (before the send button)
         const sendButton = inputWrapper.querySelector('#send-button');
@@ -106,11 +107,9 @@ class Prompter {
             inputWrapper.appendChild(button);
         }
         
-        // Event listener to start prompter conversation
+        // Event listener to toggle prompter conversation
         button.addEventListener('click', () => {
-            this.startPrompterConversation();
-            // Remove pulse effect after first click
-            button.classList.remove('pulse');
+            this.togglePrompterConversation();
         });
     }
 
@@ -124,6 +123,7 @@ class Prompter {
     // This method will be called from app.js when the toggle changes
     updatePrompterState(isEnabled) {
         this.isEnabled = isEnabled;
+        console.log(`DEBUG: Updating prompter state to ${isEnabled ? 'enabled' : 'disabled'}`);
         
         // Update UI based on new state
         if (this.isEnabled) {
@@ -139,14 +139,20 @@ class Prompter {
             // If currently active, remove any prompter UI
             if (this.isActive) {
                 this.isActive = false;
+                console.log('DEBUG: Deactivating prompter due to toggle being disabled');
+                
                 // Remove any prompter-specific elements
                 document.querySelectorAll('[data-prompter="true"]').forEach(el => {
                     el.remove();
                 });
+                
+                // Reset the chat input placeholder
+                this.updateInputPlaceholder(false);
             }
         }
     }
     
+    // Method to start a prompter conversation
     startPrompterConversation() {
         // Get the messages container
         const messagesContainer = document.getElementById('messages-container');
@@ -154,28 +160,423 @@ class Prompter {
         
         // Check if there's already an active prompter session
         if (this.isActive) {
-            // Add a message reminding the user they're already in a prompter session
-            this.showSystemMessage("You're already in an Animation Prompter session. Continue your conversation here.");
+            // Toggle it off instead
+            this.togglePrompterConversation();
             return;
         }
         
         this.isActive = true;
+        console.log('DEBUG: Prompter is now active');
+        
+        // Update the input placeholder text and UI
+        this.updateInputPlaceholder(true);
+        this.addStatusLabel(true);
+        
+        // Add visual feedback for activation
+        this.triggerInputShimmer();
+        
+        // Update button state
+        const button = document.querySelector('.prompter-toggle-btn');
+        if (button) {
+            button.classList.add('active');
+        }
         
         // Add system message to explain the prompter
         this.showSystemMessage("You're now talking to the Animation Prompter. I'll help you create animated sequences frame by frame.");
         
-        // Add the first AI message to start the conversation
-        this.addAIMessage(`
-            <p>👋 Welcome to Animation Prompter!</p>
-            <p>I'll help you create animated sequences frame by frame. Tell me what kind of animation you'd like to create, and I'll guide you through the process.</p>
-            <p>For example, try:</p>
-            <ul>
-                <li>A sunset that gradually transitions to night with stars appearing</li>
-                <li>A flower blooming from bud to full bloom</li>
-                <li>A character walking through different seasons</li>
-            </ul>
-            <p>Describe the animation you want to create:</p>
-        `);
+        // Only show welcome message if it hasn't been shown before
+        if (!this.welcomeMessageShown) {
+            this.addEnhancedWelcomeMessage();
+            this.welcomeMessageShown = true;
+        }
+    }
+    
+    // New method to add the enhanced welcome message
+    addEnhancedWelcomeMessage() {
+        const messagesContainer = document.getElementById('messages-container');
+        if (!messagesContainer) return;
+        
+        // --- MODIFIED: Wrapper for centering and styling ---
+        const messageDiv = document.createElement('div');
+        // Use a more specific class for easier targeting and centering
+        messageDiv.className = 'message ai-message prompter-welcome-wrapper welcome-message-animated'; 
+        messageDiv.setAttribute('data-prompter', 'true');
+        // --- END MODIFIED ---
+        
+        // Initial high-quality, detailed examples (Keep existing for now)
+        const initialExamples = [
+            // ... (keep existing examples) ...
+            {
+                title: "Epic JoJo Stand Battle",
+                description: "Create a dynamic animation of Jotaro Kujo summoning Star Platinum to defeat Dio. Start with Jotaro in a confident stance, then show him pointing dramatically as energy builds around him. Next frame shows Star Platinum beginning to materialize with glowing eyes and flowing energy. Fourth frame captures Star Platinum fully manifested in attack pose with 'ORA' effect text. Final frame shows the aftermath with Dio being launched backward and debris flying. Use dramatic lighting, impact lines, and the iconic JoJo art style with bold outlines and dynamic angles."
+            },
+            {
+                title: "Watercolor Landscape Tutorial",
+                description: "An instructional animation showing the step-by-step process of painting a misty mountain landscape in watercolor. Begin with the blank paper and pencil sketch outlining the mountain shapes. Second frame shows the first wash of light blue for the sky and distant mountains. Third frame demonstrates adding darker blue-purple tones for middle-ground mountains and green for forests. Fourth frame shows the addition of detailed foreground elements like trees and rocks with a fine brush. Final frame reveals the completed painting with highlighting, texture work, and splatter techniques for atmosphere. Include subtle brush stroke indicators and color mixing notes."
+            }
+        ];
+        
+        // --- MODIFIED: Enhanced HTML structure for better styling and bold text ---
+        messageDiv.innerHTML = `
+                <div class="prompter-welcome">
+                    <div class="prompter-welcome-header">
+                        <div class="prompter-welcome-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M15.63 3.69a1.5 1.5 0 0 1 1.08.42l1.59 1.59a1.5 1.5 0 0 1 .42 1.08L17.77 12l1.59 5.22a1.5 1.5 0 0 1-.42 1.08l-1.59 1.59a1.5 1.5 0 0 1-1.08.42L12 19.37l-5.22 1.59a1.5 1.5 0 0 1-1.08-.42l-1.59-1.59a1.5 1.5 0 0 1-.42-1.08L4.63 12 3.04 6.78a1.5 1.5 0 0 1 .42-1.08l1.59-1.59a1.5 1.5 0 0 1 1.08-.42L12 4.63l5.63-1.94Z"/><path d="m12 8 1.5 3 3 1.5-3 1.5-1.5 3-1.5-3-3-1.5 3-1.5Z"/>
+                    </svg>
+                </div>
+                        <h2 class="prompter-welcome-title">Animation Prompter</h2>
+            </div>
+                    
+                <p class="prompter-welcome-intro">
+                    Ready to make some frames? Describe your animation idea, or get inspired by the examples below. <strong>Let's create something sequence by sequence.</strong>
+                </p>
+
+                <div class="prompter-examples-header">
+                    <h3 class="prompter-examples-title">Need Ideas?</h3>
+                    <button class="prompter-shuffle-btn" title="Get New Examples">
+                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="16 3 21 3 21 8"></polyline><line x1="4" y1="20" x2="21" y2="3"></line><polyline points="21 16 21 21 16 21"></polyline><line x1="15" y1="15" x2="21" y2="21"></line><line x1="4" y1="4" x2="9" y2="9"></line>
+                        </svg>
+                        Shuffle Examples
+                    </button>
+                </div>
+                    <div class="prompter-examples">
+                    <!-- Examples will be loaded here -->
+                    </div>
+                    
+                    <div class="prompter-welcome-instruction">
+                    <span class="instruction-icon">💡</span> 
+                    <span><strong>Tip:</strong> Click any example card above to <strong>instantly copy</strong> its detailed prompt into your input!</span>
+                </div>
+            </div>
+        `;
+        // --- END MODIFIED ---
+        
+        // Add to messages container
+        messagesContainer.appendChild(messageDiv);
+        this.scrollToBottom();
+        
+        // Load initial examples
+        this.updateWelcomeExamples(initialExamples, messageDiv);
+
+        // Add event listener for shuffle button
+        const shuffleBtn = messageDiv.querySelector('.prompter-shuffle-btn');
+        if (shuffleBtn) {
+            shuffleBtn.addEventListener('click', async () => {
+                // Show loading state
+                shuffleBtn.disabled = true;
+                shuffleBtn.innerHTML = `
+                    <svg class="spin" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
+                    </svg>
+                    Shuffling...
+                `;
+
+                try {
+                    const newExamples = await this.generateRandomExamples();
+                    this.updateWelcomeExamples(newExamples, messageDiv);
+                } catch (error) {
+                    console.error("Failed to generate new examples:", error);
+                    this.showSystemMessage("Couldn't generate new examples right now. Please try again later.");
+                } finally {
+                    // Restore button state
+                    shuffleBtn.disabled = false;
+                    shuffleBtn.innerHTML = `
+                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="16 3 21 3 21 8"></polyline><line x1="4" y1="20" x2="21" y2="3"></line><polyline points="21 16 21 21 16 21"></polyline><line x1="15" y1="15" x2="21" y2="21"></line><line x1="4" y1="4" x2="9" y2="9"></line>
+                        </svg>
+                        Shuffle Examples
+                    `;
+                }
+            });
+        }
+
+        // Add animation class with slight delay
+        setTimeout(() => {
+            messageDiv.classList.add('animate-welcome');
+        }, 100);
+
+        return messageDiv;
+    }
+
+    // New function to update examples in the welcome message
+    updateWelcomeExamples(examples, messageDiv) {
+        const examplesContainer = messageDiv.querySelector('.prompter-examples');
+        if (!examplesContainer) return;
+
+        // Clear existing examples
+        examplesContainer.innerHTML = '';
+
+        // Generate the examples HTML
+        // --- MODIFIED: Add expand button and hidden full description ---
+        const examplesHTML = examples.map(example => `
+            <div class="prompter-example" data-prompt="${example.description}">
+                <div class="prompter-example-visible">
+                     <h4 class="prompter-example-title">${example.title}</h4>
+                     <p class="prompter-example-desc-short">${example.description.substring(0, 80)}...</p> 
+                     <button class="prompter-example-expand-btn" aria-label="Show More">
+                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg >
+                     </button>
+                </div>
+                <div class="prompter-example-full-desc">
+                    <p>${example.description}</p>
+                </div>
+            </div>
+        `).join('');
+        // --- END MODIFIED ---
+
+        examplesContainer.innerHTML = examplesHTML;
+
+        // Re-add event listeners to new example cards
+        const exampleElements = examplesContainer.querySelectorAll('.prompter-example');
+        exampleElements.forEach(element => {
+            // --- MODIFIED: Click on card copies prompt ---
+            element.addEventListener('click', (e) => {
+                // Only copy if the click wasn't on the expand button
+                if (!e.target.closest('.prompter-example-expand-btn')) {
+                const promptText = element.getAttribute('data-prompt');
+                if (promptText) {
+                    const userInput = document.getElementById('user-input');
+                    if (userInput) {
+                        userInput.value = promptText;
+                        userInput.focus();
+                        if (typeof userInput.dispatchEvent === 'function') {
+                            userInput.dispatchEvent(new Event('input'));
+                        }
+                        userInput.scrollTop = 0;
+                            // Add a visual confirmation (optional)
+                            element.classList.add('copied-flash');
+                            setTimeout(() => element.classList.remove('copied-flash'), 600);
+                        }
+                    }
+                }
+            });
+            // --- END MODIFIED ---
+
+            // --- ADDED: Listener for expand button ---
+            const expandBtn = element.querySelector('.prompter-example-expand-btn');
+            if (expandBtn) {
+                expandBtn.addEventListener('click', (e) => {
+                    e.stopPropagation(); // Prevent card click listener
+                    const isExpanded = element.classList.toggle('expanded');
+                    expandBtn.setAttribute('aria-label', isExpanded ? 'Show Less' : 'Show More');
+                    // Update icon direction
+                    expandBtn.querySelector('svg').style.transform = isExpanded ? 'rotate(180deg)' : 'rotate(0deg)';
+                });
+            }
+            // --- END ADDED ---
+        });
+    }
+
+    // --- ADDED: Helper to parse error messages ---
+    _parseErrorMessage(errorMessage) {
+        let displayMessage = 'An Error Occurred';
+        let detailsHTML = `<p class="error-raw">${errorMessage}</p>`; // Fallback
+        const isQuotaError = errorMessage.includes('[429') || errorMessage.toLowerCase().includes('quota exceeded');
+        let isSafetyError = errorMessage.includes('Generation blocked');
+
+        if (isQuotaError) {
+            displayMessage = 'API Quota Limit Reached';
+            try {
+                // Attempt to parse details from the specific Google AI error format
+                const violationsMatch = errorMessage.match(/"violations":\s*\[\s*\{([\s\S]*?)\}\s*\]/);
+                const helpMatch = errorMessage.match(/"links":\s*\[\s*\{([\s\S]*?)\}\s*\]/);
+                const retryMatch = errorMessage.match(/"retryDelay":\s*"(\d+s)"/);
+
+                let model = 'N/A';
+                let limit = 'N/A';
+                let link = 'https://ai.google.dev/gemini-api/docs/rate-limits';
+                let retry = retryMatch ? retryMatch[1] : null;
+
+                if (violationsMatch) {
+                    const violationDetails = violationsMatch[1];
+                    const modelMatch = violationDetails.match(/"model":\s*"([^"]+)"/);
+                    const valueMatch = violationDetails.match(/"quotaValue":\s*"([^"]+)"/);
+                    if (modelMatch) model = modelMatch[1];
+                    if (valueMatch) limit = valueMatch[1];
+                }
+                if (helpMatch) {
+                    const linkDetails = helpMatch[1];
+                    const urlMatch = linkDetails.match(/"url":\s*"([^"]+)"/);
+                    if (urlMatch) link = urlMatch[1];
+                }
+
+                detailsHTML = `
+                    <p>You've reached the Google API rate limit. This typically means:</p>
+                    <p><strong>Model:</strong> ${model.replace('gemini-', 'Gemini ')}</p>
+                    <p><strong>Limit:</strong> ${limit} requests per minute</p>
+                    ${retry ? `<p><strong>Retry after:</strong> ${retry}</p>` : ''}
+                    <p>Wait a moment and try again, or <a href="${link}" target="_blank" rel="noopener noreferrer">learn more about quotas</a>.</p>
+                `;
+
+            } catch (parseError) {
+                console.error("Failed to parse detailed 429 error:", parseError);
+                detailsHTML = `
+                    <p>You've exceeded the API quota limit, which means we've sent too many requests in a short period.</p>
+                    <p>Please wait 30-60 seconds before trying again.</p>
+                `;
+                const linkMatch = errorMessage.match(/https:\/\/[^\s]+/);
+                if (linkMatch) {
+                    detailsHTML += `<p><a href="${linkMatch[0]}" target="_blank" rel="noopener noreferrer">Learn More</a></p>`;
+                }
+            }
+        } else if (isSafetyError) {
+            displayMessage = 'Content Safety Filter';
+            const reasonMatch = errorMessage.match(/Generation blocked: (.*?)\./);
+            if (reasonMatch) {
+                detailsHTML = `
+                    <p>Your request was blocked by the AI safety system.</p>
+                    <p><strong>Reason:</strong> ${reasonMatch[1]}</p>
+                    <p>Please revise your prompt to avoid potentially sensitive content.</p>
+                `;
+            } else {
+                detailsHTML = `
+                    <p>Your request was blocked by the AI safety system.</p>
+                    <p>Please revise your prompt to avoid potentially sensitive content.</p>
+                `;
+            }
+        } else {
+            // Generic error - keep it brief but informative
+            displayMessage = 'Generation Error';
+            detailsHTML = `
+                <p>Something went wrong while processing your request.</p>
+                <p>This could be a temporary issue. Please try again in a moment.</p>
+                <p class="error-raw">${errorMessage.substring(0, 200)}${errorMessage.length > 200 ? '...' : ''}</p>
+            `;
+        }
+
+        return { displayMessage, detailsHTML, isQuotaError, isSafetyError };
+    }
+    // --- END ADDED ---
+    
+    // New method to toggle the prompter on/off
+    togglePrompterConversation() {
+        if (this.isActive) {
+            // Turn it off
+            this.isActive = false;
+            console.log('DEBUG: Prompter is now inactive');
+            
+            // Update the input placeholder text and UI
+            this.updateInputPlaceholder(false);
+            this.addStatusLabel(false);
+            
+            // Update button state
+            const button = document.querySelector('.prompter-toggle-btn');
+            if (button) {
+                button.classList.remove('active');
+                // Add ripple effect on toggle
+                this.addButtonRipple(button);
+            }
+            
+            // Add system message to explain deactivation
+            this.showSystemMessage("Animation Prompter has been deactivated. You're now back to normal chat mode.");
+        } else {
+            // Turn it on - call the start method
+            this.startPrompterConversation();
+        }
+    }
+    
+    // Method to add status label above the chat input
+    addStatusLabel(isActive) {
+        // Remove existing label if any
+        const existingLabel = document.querySelector('.prompter-status-label');
+        if (existingLabel) {
+            existingLabel.remove();
+        }
+        
+        if (isActive) {
+            // Create the status label
+            const inputContainer = document.querySelector('.input-container');
+            if (!inputContainer) return;
+            
+            const statusLabel = document.createElement('div');
+            statusLabel.className = 'prompter-status-label';
+            statusLabel.innerHTML = `
+                <span class="prompter-status-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polygon points="10 8 16 12 10 16 10 8"></polygon>
+                    </svg>
+                </span>
+                Prompter Active
+            `;
+            
+            // Insert before the input wrapper
+            const inputWrapper = inputContainer.querySelector('.input-wrapper');
+            if (inputWrapper) {
+                inputContainer.insertBefore(statusLabel, inputWrapper);
+                
+                // Add animation to make it feel more connected
+                setTimeout(() => {
+                    statusLabel.classList.add('connected');
+                }, 100);
+            }
+        }
+    }
+    
+    // Method to add a ripple effect to the button on click
+    addButtonRipple(button) {
+        // Create ripple element
+        const ripple = document.createElement('span');
+        ripple.className = 'button-ripple';
+        
+        // Add to button
+        button.appendChild(ripple);
+        
+        // Position in center
+        const rect = button.getBoundingClientRect();
+        const size = Math.max(rect.width, rect.height);
+        
+        ripple.style.width = ripple.style.height = `${size * 2}px`;
+        ripple.style.left = `${-size/2}px`;
+        ripple.style.top = `${-size/2}px`;
+        
+        // Animate
+        ripple.classList.add('animate');
+        
+        // Remove after animation
+        setTimeout(() => {
+            ripple.remove();
+        }, 600);
+    }
+    
+    // Method to trigger a single shimmer effect on the input
+    triggerInputShimmer() {
+        const userInput = document.getElementById('user-input');
+        if (!userInput) return;
+        
+        // Add shimmer class which will be removed after animation completes
+        userInput.classList.add('prompter-shimmer');
+        
+        // Remove class after animation completes
+        setTimeout(() => {
+            userInput.classList.remove('prompter-shimmer');
+        }, 1500); // Match this with CSS animation duration
+        
+        // Add button ripple effect on activation
+        const button = document.querySelector('.prompter-toggle-btn');
+        if (button) {
+            this.addButtonRipple(button);
+            // Add active class with a slight delay for smoother transition
+            setTimeout(() => {
+                button.classList.add('active');
+            }, 50);
+        }
+    }
+    
+    // Update the main chat input placeholder based on prompter state
+    updateInputPlaceholder(isPrompterActive) {
+        const userInput = document.getElementById('user-input');
+        if (userInput) {
+            if (isPrompterActive) {
+                userInput.setAttribute('placeholder', 'Describe your animation idea...');
+                userInput.classList.add('prompter-active');
+            } else {
+                userInput.setAttribute('placeholder', 'Type your message...');
+                userInput.classList.remove('prompter-active');
+            }
+        }
     }
     
     showSystemMessage(message) {
@@ -201,123 +602,106 @@ class Prompter {
         this.scrollToBottom();
     }
     
-    addAIMessage(html) {
+    // --- MODIFIED: addAIMessage to handle errors ---
+    addAIMessage(content, isError = false) {
         const messagesContainer = document.getElementById('messages-container');
         if (!messagesContainer) return;
         
         const messageDiv = document.createElement('div');
-        messageDiv.className = 'message ai-message prompter-message';
+        // Add 'prompter-error' class if it's an error message
+        // ADD 'no-bubble' class to explicitly remove bubble styling via CSS
+        messageDiv.className = `message ai-message prompter-message ${isError ? 'prompter-error no-bubble' : ''}`;
         messageDiv.setAttribute('data-prompter', 'true');
         
-        messageDiv.innerHTML = `
-            <div class="prompter-message-content">${html}</div>
-        `;
-        
-        // Add to messages container
+        // Add to messages container first
         messagesContainer.appendChild(messageDiv);
-        this.scrollToBottom();
+
+        if (isError) {
+            // Directly set innerHTML of messageDiv for errors
+            const { displayMessage, detailsHTML } = this._parseErrorMessage(content);
+
+            messageDiv.innerHTML = `
+                <div class="prompter-error-message">
+                    <div class="error-icon-container">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="8" x2="12" y2="12"></line>
+                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                        </svg>
+                    </div>
+                    <div class="error-summary">${displayMessage}</div>
+                    <div class="error-details">
+                        ${detailsHTML}
+                        ${content.includes('Please try again') && !detailsHTML.includes('Please try again') ? 
+                            '<p>Please try again with a different description.</p>' : ''}
+                    </div>
+                    <!-- Removed the ::after pseudo-element indicator -->
+                </div>
+            `;
+            
+            // Add touch listener for mobile expansion
+            const errorContainer = messageDiv.querySelector('.prompter-error-message');
+            if (errorContainer && 'ontouchstart' in window) {
+                 if (!errorContainer.dataset.touchListenerAttached) {
+                    errorContainer.addEventListener('click', (e) => {
+                        if (e.target.tagName !== 'A') {
+                            errorContainer.classList.toggle('show-details');
+                        }
+                    });
+                    errorContainer.dataset.touchListenerAttached = 'true';
+                }
+            }
+        } else {
+            // For non-error messages, use the standard content wrapper
+        const messageContentDiv = document.createElement('div');
+        messageContentDiv.className = 'prompter-message-content';
+        messageDiv.appendChild(messageContentDiv);
         
-        // If this is the welcome message, add input area for user
-        if (html.includes('Welcome to Animation Prompter')) {
-            this.addPrompterInputArea(messageDiv);
+        if (typeof content === 'string' && 
+            (content.includes('<div class="prompter-loading">') || 
+             content.includes('<div class="prompter-frames-container">') ||
+             content.includes('<div class="prompter-final-gif">') ||
+             content.includes('<div class="prompter-actions">'))) {
+            messageContentDiv.innerHTML = content;
+        } else {
+            const markdownBuffer = new MarkdownBuffer(messageContentDiv);
+            let cleanContent = '';
+            if (typeof content === 'string') {
+                    cleanContent = content.trim();
+                    if (cleanContent.startsWith('```') && cleanContent.endsWith('```')) {
+                        cleanContent = cleanContent.substring(3, cleanContent.length - 3).trim();
+                        cleanContent = cleanContent.replace(/^[a-z]+\n/, ''); 
+                    }
+                     cleanContent = cleanContent
+                        .replace(/<p>(.*?)<\/p>/g, '$1\n\n') 
+                        .replace(/<ol>|<\/ol >|<ul>|<\/ul >/g, '')
+                        .replace(/<li>(.*?)<\/li>/g, '* $1\n') 
+                        .replace(/<strong>(.*?)<\/strong>/g, '**$1**') 
+                        .replace(/<em>(.*?)<\/em>/g, '*$1*') 
+                        .replace(/< br\s*\/?>/g, '\n') 
+                        .replace(/<.*?>/g, '') 
+                    .trim();
+            } else {
+                cleanContent = content;
+            }
+            markdownBuffer.appendText(cleanContent);
+            markdownBuffer.render();
+            }
         }
         
+        this.scrollToBottom();
         return messageDiv;
     }
+    // --- END MODIFIED ---
     
-    addPrompterInputArea(messageElement) {
-        // Create the input area
-        const inputArea = document.createElement('div');
-        inputArea.className = 'prompter-input-area';
-        inputArea.innerHTML = `
-            <div class="prompter-input-wrapper">
-                <textarea class="prompter-textarea" placeholder="Describe your animation idea..."></textarea>
-                <button class="prompter-image-btn" title="Add reference image">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                        <circle cx="8.5" cy="8.5" r="1.5"></circle>
-                        <polyline points="21 15 16 10 5 21"></polyline>
-                    </svg>
-                </button>
-                <button class="prompter-send-btn">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="22" y1="2" x2="11" y2="13"></line>
-                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                    </svg>
-                </button>
-            </div>
-            <input type="file" class="prompter-image-input" accept="image/*" style="display: none;">
-            <div class="prompter-images-preview"></div>
-        `;
+    // Method to handle messages from the main chat input
+    handleUserMessage(text, images = []) {
+        console.log(`DEBUG: Prompter handling user message: "${text}"`);
         
-        // Add to the message element
-        messageElement.appendChild(inputArea);
-        
-        // Set up event listeners
-        const textarea = inputArea.querySelector('.prompter-textarea');
-        const sendButton = inputArea.querySelector('.prompter-send-btn');
-        const imageButton = inputArea.querySelector('.prompter-image-btn');
-        const imageInput = inputArea.querySelector('.prompter-image-input');
-        
-        // Focus the textarea
-        textarea.focus();
-        
-        // Send button click
-        sendButton.addEventListener('click', () => {
-            this.handleSendPrompt(textarea, inputArea);
-        });
-        
-        // Enter key in textarea
-        textarea.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                this.handleSendPrompt(textarea, inputArea);
-            }
-            
-            // Auto-resize textarea
-            setTimeout(() => {
-                textarea.style.height = 'auto';
-                textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
-            }, 0);
-        });
-        
-        // Image upload button
-        imageButton.addEventListener('click', () => {
-            imageInput.click();
-        });
-        
-        // Image selection
-        imageInput.addEventListener('change', (e) => {
-            this.handleImageUpload(e.target.files, inputArea);
-        });
-        
-        this.scrollToBottom();
-    }
-    
-    handleSendPrompt(textarea, inputArea) {
-        const text = textarea.value.trim();
-        
-        // Check if there's text or selected images
-        if (!text && this.selectedImages.length === 0) {
-            return;
-        }
+        if (!this.isActive) return false; // Not handled by prompter
         
         // Get reference to images if any
-        const uploadedImages = [...this.selectedImages];
-        
-        // Add user message
-        this.addUserMessage(text, uploadedImages);
-        
-        // Clear input and images
-        textarea.value = '';
-        textarea.style.height = 'auto';
-        this.selectedImages = [];
-        
-        // Clear image previews
-        const previewContainer = inputArea.querySelector('.prompter-images-preview');
-        if (previewContainer) {
-            previewContainer.innerHTML = '';
-        }
+        const uploadedImages = [...images];
         
         // Show loading message
         this.showLoading();
@@ -330,45 +714,8 @@ class Prompter {
                 this.processFollowupAnswer(text, uploadedImages);
             }
         }, 1000);
-    }
-    
-    addUserMessage(text, images = []) {
-        const messagesContainer = document.getElementById('messages-container');
-        if (!messagesContainer) return;
         
-        const messageDiv = document.createElement('div');
-        messageDiv.className = 'message user-message';
-        messageDiv.setAttribute('data-prompter', 'true');
-        
-        let messageContent = `<div class="message-content user-text">${text}</div>`;
-        
-        // Add to messages container
-        messageDiv.innerHTML = messageContent;
-        messagesContainer.appendChild(messageDiv);
-        
-        // Add images if any
-        if (images && images.length > 0) {
-            const imagesContainer = document.createElement('div');
-            imagesContainer.className = 'image-container';
-            
-            images.forEach(img => {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    const imgElement = document.createElement('img');
-                    imgElement.src = e.target.result;
-                    imgElement.alt = 'Uploaded image';
-                    
-                    imagesContainer.appendChild(imgElement);
-                    messageDiv.appendChild(imagesContainer);
-                    
-                    // Scroll to bottom
-                    this.scrollToBottom();
-                };
-                reader.readAsDataURL(img.file);
-            });
-        }
-        
-        this.scrollToBottom();
+        return true; // Message handled by prompter
     }
     
     scrollToBottom() {
@@ -472,11 +819,13 @@ class Prompter {
         // Remove loading message
         this.removeLoadingMessage();
         
-        // Show that we're planning
-        this.addAIMessage(`<p>I'm creating an animation plan for: <strong>${prompt}</strong></p>
-            <p>Please wait while I design the frame sequence...</p>`);
-            
-        // Show new loading animation
+        // Generate a personalized confirmation message using the Gemini API
+        this.generateConfirmationMessage(prompt)
+            .then(confirmationMessage => {
+                // Show the API-generated confirmation message
+                this.addAIMessage(confirmationMessage);
+                
+                // Show loading animation
         const loadingMsg = this.showLoading();
         
         // Create the animation plan
@@ -499,12 +848,96 @@ class Prompter {
                     loadingMsg.parentNode.removeChild(loadingMsg);
                 }
                 
-                // Show error message
-                this.addAIMessage(`
-                    <p>I encountered an error while creating your animation plan: ${error.message}</p>
-                    <p>Please try again with a different description.</p>
-                `);
+                // --- MODIFIED: Show styled error message ---
+                this.addAIMessage(`I encountered an error while creating your animation plan: ${error.message}. Please try again with a different description.`, true);
+                // --- END MODIFIED ---
             });
+            })
+            .catch(error => {
+                console.error('Error generating confirmation message:', error);
+                
+                // Fallback to a simple confirmation in case the API call fails
+                this.addAIMessage(`<p>I'll create an animation based on: <strong>${prompt}</strong></p>`);
+                
+                // Show loading animation and continue with plan creation
+                const loadingMsg = this.showLoading();
+                
+                // Create the animation plan
+                this.createAnimationPlanWithAI(prompt, images)
+                    .then(plan => {
+                        if (loadingMsg && loadingMsg.parentNode) {
+                            loadingMsg.parentNode.removeChild(loadingMsg);
+                        }
+                        this.currentPlan = plan;
+                        this.showAnimationPlan();
+                    })
+                    .catch(error => {
+                        console.error('Error creating animation plan:', error);
+                        if (loadingMsg && loadingMsg.parentNode) {
+                            loadingMsg.parentNode.removeChild(loadingMsg);
+                        }
+                        // --- MODIFIED: Show styled error message ---
+                        this.addAIMessage(`I encountered an error creating your animation plan: ${error.message}. Please try again with a different description.`, true);
+                        // --- END MODIFIED ---
+                    });
+            });
+    }
+    
+    // New method to generate a personalized confirmation message using the Gemini API
+    async generateConfirmationMessage(prompt) {
+        try {
+            // Check if Gemini API is available
+            if (!window.app || !window.app.model) {
+                return `Got it. Making an animation based on "${prompt}". Let's see what we can do with this...`;
+            }
+            
+            // Create a structured prompt for the confirmation message
+            const completionPrompt = {
+                contents: [{
+                    role: 'user',
+                    parts: [
+                        {
+                            text: `You are a skilled but slightly impatient animation assistant with a touch of sarcasm. You have a distinctive personality - you're direct, occasionally snarky, but still helpful. You're good at what you do and you know it. You never use emojis or exclamation points excessively.
+
+A user has requested an animation with this description: "${prompt}"
+
+Write a brief confirmation message acknowledging their request. Your response must:
+1. Be concise (2-3 sentences maximum)
+2. Have a hint of sarcasm or dry wit without being rude
+3. Acknowledge their specific request
+4. NOT use bullet points, numbered lists, or emojis
+5. NOT be overly enthusiastic or use phrases like "I'm excited" or "I can't wait"
+6. Use markdown formatting sparingly (bold or italic) only where it adds impact
+7. Sound like a real person with an edge, not a generic AI
+8. Avoid cringe phrases like "locked and loaded" or "sprinkle magic"
+
+Remember, you're skilled but slightly impatient - write like someone who's competent and gets straight to the point.`
+                        }
+                    ]
+                }],
+                generationConfig: {
+                    temperature: 0.7,
+                    topP: 0.9,
+                    topK: 40,
+                    maxOutputTokens: 150
+                }
+            };
+            
+            // Call the Gemini API
+            const result = await window.app.model.generateContent(completionPrompt);
+            
+            if (!result || !result.response) {
+                throw new Error('Failed to generate confirmation message');
+            }
+            
+            // Extract the response text
+            return result.response.text();
+            
+        } catch (error) {
+            console.error('Error generating confirmation message:', error);
+            // Return a fallback message
+            return `Got it. Making an animation based on "${prompt}". Let's see what we can do with this...`;
+        }
     }
     
     removeLoadingMessage() {
@@ -556,7 +989,7 @@ Please create a detailed animation plan with the following structure:
 Format your response as a JSON object with this structure:
 {
   "concept": "Overall description of the animation",
-  "frameCount": 5,
+  "frameCount": <number_between_3_and_8>, // Use the recommended number here
   "frames": [
     {
       "index": 0,
@@ -564,7 +997,13 @@ Format your response as a JSON object with this structure:
       "elements": ["key element 1", "key element 2"],
       "transition": "How this frame transitions to the next"
     },
-    ...more frames...
+    // ... more frames based on frameCount ...
+    {
+      "index": < frameCount - 1 >,
+      "description": "Detailed description of the final frame",
+      "elements": ["final element 1", "final element 2"],
+      "transition": "Final frame of the sequence"
+    }
   ]
 }
 
@@ -590,7 +1029,9 @@ Do not include any text outside of this JSON structure. The JSON should be valid
             const result = await window.app.model.generateContent(planPrompt);
             
             if (!result || !result.response) {
-                throw new Error('Failed to generate animation plan');
+                // --- MODIFIED: Throw specific error for styling ---
+                throw new Error('Failed to generate animation plan: No response from API.');
+                // --- END MODIFIED ---
             }
             
             // Extract the response text
@@ -609,18 +1050,9 @@ Do not include any text outside of this JSON structure. The JSON should be valid
             } catch (parseError) {
                 console.error('Failed to parse animation plan JSON:', parseError);
                 console.log('Raw response:', responseText);
-                
-                // Create a fallback plan with basic structure
-                planData = {
-                    concept: prompt,
-                    frameCount: 5,
-                    frames: Array.from({ length: 5 }, (_, i) => ({
-                        index: i,
-                        description: `Frame ${i + 1} of the "${prompt}" animation`,
-                        elements: [`Element for frame ${i + 1}`],
-                        transition: i < 4 ? `Transition to frame ${i + 2}` : 'Final frame'
-                    }))
-                };
+                // --- MODIFIED: Throw specific error for styling ---
+                throw new Error(`Failed to understand the animation plan structure from the API. Raw response logged to console.`);
+                // --- END MODIFIED ---
             }
             
             // Store the plan
@@ -665,7 +1097,9 @@ Do not include any text outside of this JSON structure. The JSON should be valid
             
         } catch (error) {
             console.error('Error creating animation plan:', error);
+            // --- MODIFIED: Re-throw error so the calling function catches it for styled display ---
             throw error;
+            // --- END MODIFIED ---
         }
     }
     
@@ -710,114 +1144,149 @@ The style should be consistent with other frames in the sequence, with smooth tr
         
         // Create AI message to display the plan
         const messageDiv = this.addAIMessage(`
-            <p>I've created an animation plan with ${this.currentPlan.frameCount} frames based on your request:</p>
-            <p><strong>Concept:</strong> ${this.currentPlan.concept}</p>
+            <div class="animation-plan-header">
+                <h3>Animation Plan</h3>
+                <p class="animation-frame-count">${this.currentPlan.frameCount} frames</p>
+            </div>
+            <div class="animation-plan-concept">
+                <p>${this.currentPlan.concept}</p>
+            </div>
+            <div class="prompter-frames-header">
+                <div class="prompter-frames-title">Animation Frames</div>
+                <button class="prompter-layout-toggle" title="Toggle layout">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="7" height="7"></rect>
+                        <rect x="14" y="3" width="7" height="7"></rect>
+                        <rect x="14" y="14" width="7" height="7"></rect>
+                        <rect x="3" y="14" width="7" height="7"></rect>
+                    </svg>
+                    <span>Grid View</span>
+                </button>
+            </div>
             <div class="prompter-frames-container"></div>
             <div class="prompter-actions">
                 <button class="prompter-action-button prompter-generate-all">Generate All Frames</button>
-                <button class="prompter-action-button prompter-export" disabled>Export as GIF</button>
+                <button class="prompter-action-button prompter-export" disabled>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M10 7v10l5-5-5-5z"/><path d="M2 12h8"/><path d="M21 12h-8"/><rect x="2" y="3" width="19" height="18" rx="2"/>
+                    </svg>
+                    Export as GIF
+                </button>
+                <button class="prompter-action-button prompter-download-images" disabled>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    Download Images
+                </button>
             </div>
+            <div class="prompter-download-ui-container"></div>
+            <div class="prompter-export-ui-container"></div>
         `);
         
-        // Get the frames container and add frames
+        // Get the frames container
         const framesContainer = messageDiv.querySelector('.prompter-frames-container');
         if (!framesContainer) return;
         
-        // Add frames to container
-        this.currentPlan.frames.forEach((frame, index) => {
-            const frameElement = document.createElement('div');
-            frameElement.className = 'prompter-frame';
-            frameElement.dataset.index = index;
-            
-            frameElement.innerHTML = `
-                <div class="prompter-frame-header">Frame ${index + 1}</div>
-                <div class="prompter-frame-content">
-                    <div class="prompter-frame-image-placeholder">
-                        ${frame.imageUrl ? 
-                            `<img src="${frame.imageUrl}" class="prompter-frame-image">
-                             <div class="prompter-frame-info-icon" title="View Prompt">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <circle cx="12" cy="12" r="10"></circle>
-                                    <line x1="12" y1="16" x2="12" y2="12"></line>
-                                    <line x1="12" y1="8" x2="12.01" y2="8"></line>
-                                </svg>
-                             </div>` 
-                            : `<div>Frame ${index + 1}</div>`
-                        }
-                    </div>
-                    <div class="prompter-frame-description">${frame.description}</div>
-                </div>
-                <div class="prompter-frame-actions">
-                    <button class="prompter-frame-button prompter-generate-btn" data-index="${index}">Generate</button>
-                    <button class="prompter-frame-button prompter-edit-btn" data-index="${index}">Edit Prompt</button>
-                </div>
-            `;
-            
-            framesContainer.appendChild(frameElement);
-            
-            // Add event listeners to the buttons
-            const generateBtn = frameElement.querySelector('.prompter-generate-btn');
-            if (generateBtn) {
-                generateBtn.addEventListener('click', () => {
-                    this.generateFrame(index);
-                });
-            }
-            
-            const editBtn = frameElement.querySelector('.prompter-edit-btn');
-            if (editBtn) {
-                editBtn.addEventListener('click', () => {
-                    this.editFramePrompt(index);
-                });
-            }
-            
-            // Add event listener to the info icon if the frame has an image
-            const infoIcon = frameElement.querySelector('.prompter-frame-info-icon');
-            if (infoIcon) {
-                infoIcon.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    this.showFramePromptDialog(index);
-                });
-            }
-        });
+        // Populate with frames using the refreshAnimationPlan method
+        this.refreshAnimationPlan();
         
-        // Add event listeners to action buttons
+        // Add layout toggle event listener
+        const layoutToggle = messageDiv.querySelector('.prompter-layout-toggle');
+        if (layoutToggle) {
+            layoutToggle.addEventListener('click', () => {
+                const framesContainer = document.querySelector('.prompter-frames-container');
+                // Ensure framesContainer and its parent exist before proceeding
+                if (!framesContainer || !framesContainer.parentElement) return;
+
+                const isGridLayout = framesContainer.parentElement.classList.contains('frames-grid-layout');
+                const layoutToggleSpan = layoutToggle.querySelector('span');
+                const layoutToggleSvg = layoutToggle.querySelector('svg');
+
+                if (isGridLayout) {
+                    framesContainer.parentElement.classList.remove('frames-grid-layout');
+                    if (layoutToggleSpan) layoutToggleSpan.textContent = 'Grid View';
+                    if (layoutToggleSvg) layoutToggleSvg.innerHTML = `
+                        <rect x="3" y="3" width="7" height="7"></rect>
+                        <rect x="14" y="3" width="7" height="7"></rect>
+                        <rect x="14" y="14" width="7" height="7"></rect>
+                        <rect x="3" y="14" width="7" height="7"></rect>
+                    `;
+                } else {
+                    framesContainer.parentElement.classList.add('frames-grid-layout');
+                    if (layoutToggleSpan) layoutToggleSpan.textContent = 'Row View';
+                    if (layoutToggleSvg) layoutToggleSvg.innerHTML = `
+                        <rect x="3" y="3" width="18" height="4"></rect>
+                        <rect x="3" y="10" width="18" height="4"></rect>
+                        <rect x="3" y="17" width="18" height="4"></rect>
+                    `;
+                }
+            });
+        }
+        
+        // Add generate all event listener
         const generateAllBtn = messageDiv.querySelector('.prompter-generate-all');
         if (generateAllBtn) {
             generateAllBtn.addEventListener('click', () => {
+                if (this.isGeneratingAllFrames) return; // Prevent multiple clicks while generating
+
+                const isRegenerateAction = generateAllBtn.classList.contains('regenerate');
+
+                if (isRegenerateAction) {
+                     if (!confirm("This will regenerate all frames, potentially overwriting existing ones. Are you sure?")) {
+                         return;
+                     }
+                     this.currentPlan.frames.forEach(frame => {
+                         frame.status = 'pending';
+                         frame.imageUrl = null;
+                         frame.errorMessage = null;
+                     });
+                     this.refreshAnimationPlan();
+                }
                 this.generateAllFrames();
             });
         }
         
+        // Add export button event listener
         const exportBtn = messageDiv.querySelector('.prompter-export');
         if (exportBtn) {
             exportBtn.addEventListener('click', () => {
                 this.exportAsGif();
             });
         }
-        
-        // Add input area for follow-up questions
-        this.addPrompterInputArea(messageDiv);
+
+        // --- ADDED: Download Images button listener ---
+        const downloadImagesBtn = messageDiv.querySelector('.prompter-download-images');
+        if (downloadImagesBtn) {
+            downloadImagesBtn.addEventListener('click', () => {
+                this.showImageDownloadUI();
+            });
+        }
+        // --- END ADDED ---
+
+        // Initial check of button states after plan is shown
+        this.checkAllFramesComplete();
     }
     
     processFollowupAnswer(answer, images = []) {
         // Remove loading message
         this.removeLoadingMessage();
         
-        // Process uploaded images if any
-        let imageMessage = '';
-        if (images && images.length > 0) {
-            imageMessage = `<p>I've also received your ${images.length} image(s) and will take them into account.</p>`;
-        }
+        // Generate an AI response for feedback
+        const hasImages = images && images.length > 0;
+        const imageCount = hasImages ? images.length : 0;
         
-        // Customize the animation plan based on the user's answer
-        // For simplicity, we'll just acknowledge and continue
-        
-        // Add confirmation message
-        this.addAIMessage(`<p>Thanks for the details! I've noted your feedback.</p>${imageMessage}`);
-        
-        // Add input area for follow-up
-        const messageDiv = this.addAIMessage(`<p>Would you like to generate all frames now or update any specific frame?</p>`);
-        this.addPrompterInputArea(messageDiv);
+        this.generateFeedbackResponse(hasImages, imageCount).then(feedbackMessage => {
+            this.addAIMessage(feedbackMessage);
+        }).catch(error => {
+            console.error('Error showing feedback message:', error);
+            // Use fallback if something goes wrong
+            let message = `<p>Thanks for the details! I've noted your feedback.</p>`;
+            if (hasImages) {
+                message += `<p>I've also received your ${imageCount} image(s) and will take them into account.</p>`;
+            }
+            message += `<p>Would you like to generate all frames now or update any specific frame?</p>`;
+            this.addAIMessage(message);
+        });
     }
     
     editFramePrompt(index) {
@@ -955,30 +1424,46 @@ The style should be consistent with other frames in the sequence, with smooth tr
         
         // Create dialog for showing the prompt
         const dialog = document.createElement('div');
-        dialog.className = 'prompter-dialog';
+        dialog.className = 'prompter-dialog frame-details-dialog'; // Add specific class
         dialog.innerHTML = `
+            <div class="prompter-dialog-overlay"></div> 
             <div class="prompter-dialog-content">
-                <h3 class="prompter-dialog-title">Frame ${index + 1} Details</h3>
+                <div class="prompter-dialog-header">
+                    <h3 class="prompter-dialog-title">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                           <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect><line x1="7" y1="2" x2="7" y2="22"></line><line x1="17" y1="2" x2="17" y2="22"></line><line x1="2" y1="12" x2="22" y2="12"></line><line x1="2" y1="7" x2="7" y2="7"></line><line x1="2" y1="17" x2="7" y2="17"></line><line x1="17" y1="17" x2="22" y2="17"></line><line x1="17" y1="7" x2="22" y2="7"></line>
+                        </svg>
+                        Frame ${index + 1} Details
+                    </h3>
+                    <button class="prompter-dialog-close">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+                
+                <div class="prompter-dialog-body">
+                    ${frame.imageUrl ? `
+                    <div class="prompter-dialog-section image-section">
+                        <img src="${frame.imageUrl}" class="prompter-dialog-image">
+                    </div>
+                    ` : ''}
                 
                 <div class="prompter-dialog-section">
                     <h4 class="prompter-dialog-section-title">Description</h4>
-                    <p class="prompter-dialog-prompt">${frame.description}</p>
+                        <p class="prompter-dialog-text">${frame.description}</p>
                 </div>
                 
                 <div class="prompter-dialog-section">
                     <h4 class="prompter-dialog-section-title">Full Prompt Used</h4>
-                    <p class="prompter-dialog-prompt">${frame.prompt}</p>
+                        <div class="prompter-dialog-prompt-display">
+                            <pre><code>${frame.prompt}</code></pre>
                 </div>
-                
-                ${frame.imageUrl ? `
-                <div class="prompter-dialog-section">
-                    <h4 class="prompter-dialog-section-title">Generated Image</h4>
-                    <img src="${frame.imageUrl}" class="prompter-dialog-image">
                 </div>
-                ` : ''}
+                </div>
                 
                 <div class="prompter-dialog-actions">
-                    <button class="prompter-dialog-button prompter-dialog-save">Close</button>
+                    <button class="prompter-dialog-button prompter-dialog-close-btn">Close</button>
                 </div>
             </div>
         `;
@@ -986,53 +1471,96 @@ The style should be consistent with other frames in the sequence, with smooth tr
         // Add to document
         document.body.appendChild(dialog);
         
-        // Make the dialog visible with a small delay for the animation
-        setTimeout(() => {
-            dialog.classList.add('active');
-        }, 10);
-        
-        // Setup event listener for close button
-        const closeBtn = dialog.querySelector('.prompter-dialog-save');
-        closeBtn.addEventListener('click', () => {
+        // Function to close the dialog
+        const closeDialog = () => {
             dialog.classList.remove('active');
+            // Remove the dialog from the DOM after the animation
+            dialog.addEventListener('transitionend', () => {
+                 if (dialog.parentNode) {
+                    dialog.remove();
+                 }
+            }, { once: true });
+            // Fallback removal if transitionend doesn't fire
             setTimeout(() => {
+                if (dialog.parentNode) {
                 dialog.remove();
-            }, 300);
+                }
+            }, 350); // Slightly longer than CSS transition
+        };
+
+        // Make the dialog visible with a small delay for the animation
+        requestAnimationFrame(() => {
+            dialog.classList.add('active');
         });
+        
+        // Setup event listeners for close buttons and overlay
+        const closeBtnIcon = dialog.querySelector('.prompter-dialog-close');
+        const closeBtnAction = dialog.querySelector('.prompter-dialog-close-btn');
+        const overlay = dialog.querySelector('.prompter-dialog-overlay');
+
+        closeBtnIcon.addEventListener('click', closeDialog);
+        closeBtnAction.addEventListener('click', closeDialog);
+        overlay.addEventListener('click', closeDialog);
+
+        // Allow closing with escape key
+        const escListener = (e) => {
+            if (e.key === 'Escape') {
+                closeDialog();
+                document.removeEventListener('keydown', escListener);
+            }
+        };
+        document.addEventListener('keydown', escListener);
+
+        // Ensure listener is removed when dialog closes, regardless of method
+        dialog.addEventListener('transitionend', () => {
+            document.removeEventListener('keydown', escListener);
+        }, { once: true });
+         setTimeout(() => { // Fallback
+            document.removeEventListener('keydown', escListener);
+        }, 350);
     }
     
     generateFrame(index) {
         if (!this.currentPlan || !this.currentPlan.frames[index]) return;
         
         const frame = this.currentPlan.frames[index];
+
+        // --- Ensure status is 'generating' BEFORE scrolling ---
         frame.status = 'generating';
+        this.completionMessageShown = false; // Reset completion message flag
         
-        // Update UI to show generating state
+        // Update UI to show generating state (adds .generating class)
+        this.refreshSingleFrameUI(index); // Use the helper to update just this frame
+        
         const frameElement = document.querySelector(`.prompter-frame[data-index="${index}"]`);
-        if (frameElement) {
-            const placeholder = frameElement.querySelector('.prompter-frame-image-placeholder');
-            if (placeholder) {
-                placeholder.innerHTML = `
-                    <div class="prompter-frame-loading">
-                        <div class="prompter-frame-spinner"></div>
-                        <span>Generating...</span>
-                    </div>
-                `;
-            }
-            
-            // Disable the generate button
-            const generateBtn = frameElement.querySelector('.prompter-generate-btn');
-            if (generateBtn) {
-                generateBtn.disabled = true;
-                generateBtn.textContent = 'Generating...';
-            }
+
+        // --- MOVED Scroll logic here ---
+        // Only scroll and highlight if we are in "Generate All" mode for this frame
+        if (this.isGeneratingAllFrames && frameElement) {
+            requestAnimationFrame(() => {
+                // Scroll into view
+                frameElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+                // Add highlight class - the animation starts now
+                frameElement.classList.add('scrolling-to-generate');
+
+                // Remove highlight class after animation completes
+                // Ensure this duration matches the CSS animation duration for frameScrollHighlight
+                setTimeout(() => {
+                    if (frameElement) { // Check if element still exists
+                        frameElement.classList.remove('scrolling-to-generate');
+                    }
+                }, 800); // Match CSS animation duration (0.8s)
+            });
         }
-        
-        // Generate the frame using the Gemini API
+        // --- END MOVED Scroll logic ---
+
+        // Now, actually start the image generation process
+        // This ensures the UI is updated and scroll *starts* before the async API call
         this.generateImageWithGemini(index);
     }
     
-    async generateImageWithGemini(index) {
+    async generateImageWithGemini(index, isRegeneration = false) { // Added isRegeneration flag
         try {
             // Get access to the app's Gemini model
             if (!window.app || !window.app.model) {
@@ -1046,35 +1574,43 @@ The style should be consistent with other frames in the sequence, with smooth tr
             // Find previous frame if available (for continuity)
             let previousFrameImage = null;
             if (index > 0 && this.currentPlan.frames[index - 1].imageUrl) {
-                // Get the previous frame as a base to create continuity
                 previousFrameImage = await this.getImageDataFromUrl(this.currentPlan.frames[index - 1].imageUrl);
             }
             
             // Create parts for the prompt
             const promptParts = [];
+
+            // --- MODIFIED: Add regeneration instruction ---
+            let textPromptContent = frame.prompt;
+            if (isRegeneration) {
+                textPromptContent = `Generate a creative variation based on this prompt, exploring different details or compositions while keeping the overall theme and style consistent:\n\n${frame.prompt}`;
+                console.log(`Regenerating frame ${index + 1} with modified prompt.`);
+            }
+            // --- END MODIFIED ---
             
             // Add text prompt
             promptParts.push({
-                text: `Generate ONLY AN IMAGE for animation frame ${index + 1} of ${this.currentPlan.frameCount}:\n\n${frame.prompt}\n\nThis should be a high-quality, detailed image that will be part of an animation sequence. DO NOT generate any text. PROVIDE ONLY THE IMAGE.`
+                text: `Generate ONLY ONE SINGLE IMAGE for animation frame ${index + 1} of ${this.currentPlan.frameCount}:\n\n${textPromptContent}\n\nThis must be a high-quality, detailed image that will be part of an animation sequence. DO NOT generate any text. DO NOT generate multiple images. PROVIDE ONLY ONE IMAGE.`
             });
             
             // Add previous frame image if available (for better continuity)
             if (previousFrameImage) {
                 promptParts.push({
                     inlineData: {
-                        mimeType: 'image/jpeg',
+                        mimeType: 'image/jpeg', // Assuming JPEG, adjust if needed
                         data: previousFrameImage
                     }
                 });
-                
-                // Add specific instruction for continuity
                 promptParts.push({
-                    text: "Use the provided reference image as a base for continuity. Maintain the same style, lighting, and key elements while adjusting for the described animation progress. PROVIDE ONLY THE IMAGE, NO TEXT."
+                    text: "Use the provided reference image as a base for continuity. Maintain the same style, lighting, and key elements while adjusting for the described animation progress. PROVIDE ONLY ONE IMAGE, NO TEXT."
                 });
             }
             
-            // Get temperature from app config if available
-            const temperature = window.app.config?.temperature || 0.7;
+            // Get temperature from app config if available, potentially adjust for regeneration
+            let temperature = window.app.config?.temperature || 0.7;
+            // if (isRegeneration) {
+            //     temperature = Math.min(temperature + 0.1, 1.0); // Slightly increase temp for regeneration, capped at 1.0
+            // }
             
             // Create a structured prompt for the frame
             const structuredPrompt = {
@@ -1086,16 +1622,17 @@ The style should be consistent with other frames in the sequence, with smooth tr
                     temperature: temperature,
                     topP: 0.95,
                     topK: 40,
-                    maxOutputTokens: 8192,
-                    responseModalities: ["image", "text"],
-                    responseMimeType: "text/plain"
+                    maxOutputTokens: 8192, // Keep as is, model handles image size
+                    responseModalities: ["image", "text"], // Request both, check response
+                    responseMimeType: "text/plain" // Request text/plain to get multipart response
                 },
+                // Specify the image generation model if needed (check app.js setup)
                 model: 'gemini-2.0-flash-exp-image-generation'
             };
             
-            console.log(`Generating frame ${index + 1} with prompt:`, frame.prompt);
+            console.log(`Generating frame ${index + 1} (Regen: ${isRegeneration}) with prompt:`, textPromptContent);
             
-            // Update UI to show magical generating animation
+            // Update UI to show magical generating animation in the placeholder
             this.updateGeneratingAnimation(index);
             
             // Call the Gemini API
@@ -1124,25 +1661,45 @@ The style should be consistent with other frames in the sequence, with smooth tr
                     // Update the UI with the generated image
                     this.handleGeneratedImage(index, imageUrl);
                     
-                    // If this was frame 0 and there are more frames, automatically start next frame
-                    if (index === 0 && this.currentPlan.frames.length > 1) {
-                        setTimeout(() => {
-                            this.generateFrame(1);
-                        }, 500);
+                    // Check if we should auto-generate next (only for "Generate All")
+                    if (this.isGeneratingAllFrames && index < this.currentPlan.frames.length - 1) {
+                        // Check if the *next* frame is not already complete or generating
+                        if (this.currentPlan.frames[index + 1].status === 'pending') {
+                            setTimeout(() => {
+                                this.generateFrame(index + 1);
+                            }, 500); // Add a small delay between frames
+                        } else {
+                             console.log(`Skipping auto-generation for frame ${index + 2}, status is ${this.currentPlan.frames[index + 1].status}`);
+                             // If the next one wasn't pending, check if *all* are now done
+                             this.checkAllFramesComplete(); 
+                        }
+                    } else {
+                         // If not generating all or it's the last frame, check completion
+                         this.checkAllFramesComplete();
                     }
                     
                     return true; // Success
                 } else {
-                    this.handleGenerationError(index, 'No image was generated. The API only returned text. Try adjusting your prompt.');
+                    // Check if there was text output instead
+                    const textPart = parts.find(part => part.text);
+                    const errorText = textPart ? `No image generated. API returned text: "${textPart.text.substring(0, 100)}..."` : 'No image was generated. Try adjusting your prompt.';
+                    this.handleGenerationError(index, errorText);
                     return false;
                 }
             } else {
-                this.handleGenerationError(index, 'Failed to generate image. The API returned an unexpected response.');
+                // Handle cases like safety blocks or empty responses
+                let errorReason = 'Failed to generate image. Unknown API response.';
+                if (result?.response?.promptFeedback?.blockReason) {
+                    errorReason = `Generation blocked: ${result.response.promptFeedback.blockReason}. Please revise your prompt.`;
+                } else if (!result?.response?.candidates?.length) {
+                     errorReason = 'Failed to generate image. API returned no candidates.';
+                }
+                this.handleGenerationError(index, errorReason);
                 return false;
             }
         } catch (error) {
             console.error('Error generating image with Gemini:', error);
-            this.handleGenerationError(index, `Error: ${error.message || 'Unknown error'}`);
+            this.handleGenerationError(index, `Error: ${error.message || 'Unknown error during generation'}`);
             return false;
         }
     }
@@ -1189,6 +1746,9 @@ The style should be consistent with other frames in the sequence, with smooth tr
     updateGeneratingAnimation(index) {
         const frameElement = document.querySelector(`.prompter-frame[data-index="${index}"]`);
         if (!frameElement) return;
+
+        // Add generating state class
+        frameElement.classList.add('generating');
         
         const placeholder = frameElement.querySelector('.prompter-frame-image-placeholder');
         if (!placeholder) return;
@@ -1199,6 +1759,16 @@ The style should be consistent with other frames in the sequence, with smooth tr
                 <div class="prompter-magical-particles"></div>
                 <div class="prompter-magical-glow"></div>
                 <div class="prompter-magical-text">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect>
+                        <line x1="7" y1="2" x2="7" y2="22"></line>
+                        <line x1="17" y1="2" x2="17" y2="22"></line>
+                        <line x1="2" y1="12" x2="22" y2="12"></line>
+                        <line x1="2" y1="7" x2="7" y2="7"></line>
+                        <line x1="2" y1="17" x2="7" y2="17"></line>
+                        <line x1="17" y1="17" x2="22" y2="17"></line>
+                        <line x1="17" y1="7" x2="22" y2="7"></line>
+                    </svg>
                     <span>Generating frame ${index + 1}...</span>
                 </div>
             </div>
@@ -1221,7 +1791,13 @@ The style should be consistent with other frames in the sequence, with smooth tr
         
         // Animation states
         let phase = 0;
-        const phases = ['Analyzing prompt', 'Creating composition', 'Adding details', 'Finalizing image'];
+        const phases = [
+            'Crafting composition',
+            'Weaving details',
+            'Infusing magic',
+            'Perfecting frame',
+            'Almost there'
+        ];
         
         // Update animation at intervals
         this.animationIntervals[index] = setInterval(() => {
@@ -1230,105 +1806,136 @@ The style should be consistent with other frames in the sequence, with smooth tr
                 this.createParticle(particlesContainer);
             }
             
-            // Update glow
-            const hue = (Date.now() / 50) % 360;
-            glowElement.style.boxShadow = `0 0 30px 10px hsla(${hue}, 100%, 70%, 0.3)`;
+            // Update glow with shifting colors
+            const time = Date.now() / 1000;
+            const hue1 = (time * 20) % 360;
+            const hue2 = (hue1 + 40) % 360;
+            glowElement.style.background = `radial-gradient(circle, 
+                hsla(${hue1}, 80%, 65%, 0.15) 0%, 
+                hsla(${hue2}, 70%, 60%, 0.1) 40%, 
+                transparent 70%)`;
             
             // Update text periodically
             if (Math.random() > 0.95) {
                 phase = (phase + 1) % phases.length;
                 textElement.textContent = `${phases[phase]}...`;
             }
-        }, 200);
+        }, 150);
     }
     
     // Create a single magical particle
     createParticle(container) {
+        if (!container) return;
+        
         const particle = document.createElement('div');
         particle.className = 'prompter-particle';
         
-        // Random position, size and color
-        const size = Math.random() * 6 + 2;
-        const hue = Math.floor(Math.random() * 360);
+        // Random starting position
+        const x = Math.random() * container.offsetWidth;
+        const y = Math.random() * container.offsetHeight;
         
-        particle.style.width = `${size}px`;
-        particle.style.height = `${size}px`;
-        particle.style.background = `hsla(${hue}, 100%, 70%, 0.8)`;
+        // Random direction vector
+        const angle = Math.random() * Math.PI * 2;
+        const dx = Math.cos(angle);
+        const dy = Math.sin(angle);
         
-        // Position randomly within container
-        particle.style.left = `${Math.random() * 100}%`;
-        particle.style.top = `${Math.random() * 100}%`;
-        
-        // Add animation
-        particle.style.animationDuration = `${1 + Math.random() * 2}s`;
-        particle.style.animationDelay = `${Math.random() * 0.5}s`;
+        // Set CSS variables for the animation
+        particle.style.setProperty('--x', `${x}px`);
+        particle.style.setProperty('--y', `${y}px`);
+        particle.style.setProperty('--dx', dx);
+        particle.style.setProperty('--dy', dy);
         
         container.appendChild(particle);
         
-        // Remove particle after animation completes
-        setTimeout(() => {
-            if (container.contains(particle)) {
-                container.removeChild(particle);
-            }
-        }, 3000);
+        // Remove particle after animation
+        particle.addEventListener('animationend', () => {
+            particle.remove();
+        });
     }
     
+    // Handle errors during image generation
     handleGenerationError(index, errorMessage) {
-        if (!this.currentPlan || !this.currentPlan.frames[index]) return;
+        // Clear any animation interval
+        if (this.animationIntervals[index]) {
+            clearInterval(this.animationIntervals[index]);
+            this.animationIntervals[index] = null;
+        }
         
-        const frame = this.currentPlan.frames[index];
+        const frame = this.currentPlan?.frames?.[index];
+        if (frame) {
         frame.status = 'error';
-        frame.errorMessage = errorMessage;
-        
-        // Update UI to show error state
-        const frameElement = document.querySelector(`.prompter-frame[data-index="${index}"]`);
-        if (frameElement) {
-            const placeholder = frameElement.querySelector('.prompter-frame-image-placeholder');
-            if (placeholder) {
-                placeholder.innerHTML = `
-                    <div class="prompter-frame-loading">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #f44336;">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <line x1="12" y1="8" x2="12" y2="12"></line>
-                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                        </svg>
-                        <span>Generation failed</span>
-                    </div>
-                `;
-            }
-            
-            // Enable the generate button for retry
-            const generateBtn = frameElement.querySelector('.prompter-generate-btn');
-            if (generateBtn) {
-                generateBtn.disabled = false;
-                generateBtn.textContent = 'Retry';
-            }
+            frame.errorMessage = errorMessage; // Store the raw error
         }
 
-        // If we're generating all frames sequentially, continue to the next frame despite the error
-        if (this.isGeneratingAllFrames && index < this.currentPlan.frames.length - 1) {
-            console.log(`Frame ${index + 1} failed, continuing to next frame...`);
-            setTimeout(() => {
-                this.generateFrame(index + 1);
-            }, 500);
+        const { displayMessage, detailsHTML, isQuotaError } = this._parseErrorMessage(errorMessage);
+
+        if (this.isGeneratingAllFrames && (isQuotaError || !frame)) {
+            this.isGeneratingAllFrames = false;
+            this.showSystemMessage("Generation stopped due to an error. Please check the details and try again.");
+            
+            // Enable the generate all button again
+            const generateAllBtn = document.querySelector('.prompter-generate-all');
+            if (generateAllBtn) {
+                generateAllBtn.textContent = 'Generate All Frames';
+                generateAllBtn.disabled = false;
+                generateAllBtn.classList.remove('generating'); // Ensure generating class is removed
+                // If we have some completed frames, show Regenerate instead
+                const hasAnyGenerated = this.currentPlan?.frames?.some(f => f.status === 'complete');
+                if (hasAnyGenerated) {
+                    generateAllBtn.textContent = 'Regenerate All';
+                    generateAllBtn.classList.add('regenerate');
+                }
+            }
         }
+        
+        // --- MODIFICATION START: Ensure UI updates correctly for the error state ---
+        // Update UI to show error state (this handles removing .generating class and adding .error)
+        this.refreshSingleFrameUI(index);
+        // --- MODIFICATION END ---
+
+        // Check if we need to enable the export button
+        this.checkAllFramesComplete();
     }
     
     handleGeneratedImage(index, imageUrl) {
-        if (!this.currentPlan || !this.currentPlan.frames[index]) return;
+        // Validate inputs
+        if (typeof index !== 'number' || !imageUrl) {
+            console.error('Invalid args to handleGeneratedImage:', { index, imageUrl });
+            return;
+        }
         
+        // Check for current plan
+        if (!this.currentPlan || !this.currentPlan.frames || !this.currentPlan.frames[index]) {
+            console.error(`Cannot handle generated image: frame ${index} not found in current plan`);
+            return;
+        }
+        
+        // Clear any animation interval
+        if (this.animationIntervals[index]) {
+            clearInterval(this.animationIntervals[index]);
+            this.animationIntervals[index] = null;
+        }
+        
+        try {
+            // Update frame data
         const frame = this.currentPlan.frames[index];
         frame.imageUrl = imageUrl;
         frame.status = 'complete';
+            frame.errorMessage = null; // Clear any previous error message
+            
+            console.log(`DEBUG: Frame ${index + 1} completed successfully.`); // Added log
         
         // Update UI with the generated image
         const frameElement = document.querySelector(`.prompter-frame[data-index="${index}"]`);
         if (frameElement) {
+                // Remove generating/error state class
+                frameElement.classList.remove('generating', 'error');
+                
             const placeholder = frameElement.querySelector('.prompter-frame-image-placeholder');
             if (placeholder) {
                 placeholder.innerHTML = `
                     <img src="${imageUrl}" class="prompter-frame-image">
-                    <div class="prompter-frame-info-icon" title="View Prompt">
+                        <div class="prompter-frame-info-icon" title="View Frame Details">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <circle cx="12" cy="12" r="10"></circle>
                             <line x1="12" y1="16" x2="12" y2="12"></line>
@@ -1336,197 +1943,512 @@ The style should be consistent with other frames in the sequence, with smooth tr
                         </svg>
                     </div>
                 `;
-                
-                // Add event listener to the info icon
-                const infoIcon = placeholder.querySelector('.prompter-frame-info-icon');
-                if (infoIcon) {
-                    infoIcon.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        this.showFramePromptDialog(index);
-                    });
                 }
+
+                // Update the action buttons area
+                const actionsContainer = frameElement.querySelector('.prompter-frame-actions');
+                if (actionsContainer) {
+                    actionsContainer.innerHTML = `
+                        <button class="prompter-frame-button prompter-edit-btn" data-index="${index}">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                            </svg>
+                            <span>Edit Prompt</span>
+                        </button>
+                        <button class="prompter-frame-button prompter-regenerate-btn" data-index="${index}">
+                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2 19a1 1 0 0 0-.29.71V21a1 1 0 0 0 1 1h1.29a1 1 0 0 0 .71-.29L19 5.72a1.21 1.21 0 0 0 0-1.72Z"/><path d="m14 6 6 6"/><path d="M18 22v-2"/><path d="M22 18h-2"/>
+                    </svg>
+                    <span>Regenerate</span>
+                        </button>
+                `;
+                    // Re-attach listeners for the new buttons (including the info icon if present)
+                    this.attachFrameEventListeners(frameElement);
+            }
             }
             
-            // Update the generate button
-            const generateBtn = frameElement.querySelector('.prompter-generate-btn');
-            if (generateBtn) {
-                generateBtn.disabled = false;
-                generateBtn.textContent = 'Regenerate';
-            }
-        }
+            // Check if all frames are complete
+            this.checkAllFramesComplete(); // This will handle the "Regenerate All" button state
         
-        // Save the generated image
-        this.generatedImages[index] = imageUrl;
-        
-        // Check if all frames are complete and enable export button if so
-        this.checkAllFramesComplete();
-        
-        // If we're generating all frames sequentially, continue to the next frame
+            // --- MODIFIED: Added more logging for sequence logic ---
+            // If this is not the last frame and we're auto-generating, START the next frame generation
         if (this.isGeneratingAllFrames && index < this.currentPlan.frames.length - 1) {
+                const nextIndex = index + 1;
+                console.log(`DEBUG: Frame ${index + 1} finished. Checking next frame ${nextIndex + 1}.`);
+                
             setTimeout(() => {
-                this.generateFrame(index + 1);
-            }, 500);
+                    // Double check we should still be generating and the next frame exists and is pending
+                    if (this.isGeneratingAllFrames && this.currentPlan.frames[nextIndex]?.status === 'pending') {
+                        console.log(`DEBUG: Triggering generation for frame ${nextIndex + 1}.`);
+                        // Just call generateFrame, it will handle the scroll now
+                        this.generateFrame(nextIndex);
+                    } else if (!this.isGeneratingAllFrames) {
+                         console.log(`DEBUG: "Generate All" was stopped before starting frame ${nextIndex + 1}.`);
+                         this.checkAllFramesComplete(); // Update button state if stopped early
+                    } else {
+                         console.log(`DEBUG: Skipping auto-generation for frame ${nextIndex + 1}, status is ${this.currentPlan.frames[nextIndex]?.status}.`);
+                         this.checkAllFramesComplete(); // Check again if this was the last pending one
+                    }
+                }, 500); // Delay before starting next generation process
+            } else if (this.isGeneratingAllFrames && index === this.currentPlan.frames.length - 1) {
+                 // Last frame finished during "Generate All"
+                 console.log(`DEBUG: Last frame (${index + 1}) finished during "Generate All". Stopping sequence.`); // Added log
+                 this.isGeneratingAllFrames = false; // Mark as finished
+                 this.checkAllFramesComplete(); // Ensure button state is updated and completion message shows
+            }
+            // --- END MODIFIED ---
+
+        } catch (error) {
+            console.error('Error handling generated image:', error);
+            this.handleGenerationError(index, `Error displaying image: ${error.message || 'Unknown error'}`);
         }
     }
     
     checkAllFramesComplete() {
         if (!this.currentPlan || !this.currentPlan.frames) return;
         
-        let allComplete = true;
-        
-        for (const frame of this.currentPlan.frames) {
-            if (frame.status !== 'complete') {
-                allComplete = false;
-                break;
+        // Check if all frames are either 'complete' or 'error'
+        const allDoneOrError = this.currentPlan.frames.every(frame => frame.status === 'complete' || frame.status === 'error');
+        // Check if all frames are strictly 'complete'
+        const allStrictlyComplete = this.currentPlan.frames.every(frame => frame.status === 'complete');
+        const anyComplete = this.currentPlan.frames.some(frame => frame.status === 'complete'); // Check if at least one is complete
+        const completedCount = this.currentPlan.frames.filter(f => f.status === 'complete').length;
+
+        // --- MODIFIED: Update "Generate All" button state ---
+        const generateAllBtn = document.querySelector('.prompter-generate-all');
+        if (generateAllBtn) {
+            if (this.isGeneratingAllFrames) {
+                // Still generating, keep it disabled and showing progress
+                generateAllBtn.disabled = true;
+                generateAllBtn.classList.add('generating');
+                generateAllBtn.classList.remove('regenerate'); // Ensure regenerate class is removed
+                generateAllBtn.innerHTML = `
+                    <svg class="spin" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
+                    </svg>
+                    Generating... (${completedCount}/${this.currentPlan.frameCount})
+                `;
+            } else if (allDoneOrError && this.currentPlan.frameCount > 0) {
+                // All frames are finished (either complete or error), show "Regenerate All"
+                generateAllBtn.disabled = false;
+                generateAllBtn.classList.remove('generating');
+                generateAllBtn.classList.add('regenerate'); // Add class for styling
+                generateAllBtn.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 2v6h6"></path>
+                        <path d="M3 8a10 10 0 0 1 14 0m4 14v-6h-6"></path>
+                        <path d="M21 16a10 10 0 0 1-14 0"></path>
+                    </svg>
+                    Regenerate All Frames
+                `;
+            } else if (this.currentPlan.frameCount > 0) {
+                // Some frames are still pending, show "Generate All"
+                generateAllBtn.disabled = false;
+                generateAllBtn.classList.remove('generating', 'regenerate');
+                generateAllBtn.innerHTML = 'Generate All Frames';
+            } else {
+                 // No frames yet, button might be hidden or disabled depending on initial state
+                 generateAllBtn.disabled = true; // Disable if no frames
+                 generateAllBtn.classList.remove('generating', 'regenerate');
+                 generateAllBtn.innerHTML = 'Generate All Frames';
             }
         }
-        
-        // Enable export button if all frames are complete
+        // --- END MODIFIED ---
+
+        // Enable export button only if all frames are strictly complete
         const exportBtn = document.querySelector('.prompter-export');
         if (exportBtn) {
-            exportBtn.disabled = !allComplete;
+            exportBtn.disabled = !allStrictlyComplete || this.currentPlan.frameCount === 0;
         }
-        
-        // Add message when all frames are generated
-        if (allComplete) {
-            // Reset the flag since all frames are now complete
-            this.isGeneratingAllFrames = false;
+
+        // Add completion message only when all are strictly complete and message not shown
+        if (allStrictlyComplete && this.currentPlan.frameCount > 0 && !this.completionMessageShown) {
+            this.isGeneratingAllFrames = false; // Ensure flag is off
+            this.completionMessageShown = true;
             
-            const messageDiv = this.addAIMessage(`
-                <p>All frames have been generated successfully! You can now:</p>
-                <ol>
-                    <li>Export the frames as a GIF animation</li>
-                    <li>Regenerate any frames you want to modify</li>
-                    <li>Continue the conversation with any questions or changes</li>
-                </ol>
-            `);
-            this.addPrompterInputArea(messageDiv);
+            this.generateCompletionMessage().then(completionMessage => {
+                this.addAIMessage(completionMessage);
+            }).catch(error => {
+                console.error('Error showing completion message:', error);
+                this.addAIMessage(`All frames are done. You can export as a GIF, regenerate specific frames, or continue the conversation.`);
+            });
         }
+
+        // --- ADDED: Enable/disable Download Images button ---
+        const downloadImagesBtn = document.querySelector('.prompter-download-images');
+        if (downloadImagesBtn) {
+            downloadImagesBtn.disabled = !anyComplete; // Enable if at least one frame is complete
+        }
+        // --- END ADDED ---
     }
     
     generateAllFrames() {
-        if (!this.currentPlan || !this.currentPlan.frames) return;
+        if (!this.currentPlan || !this.currentPlan.frames || this.currentPlan.frameCount === 0) {
+            console.log("No frames to generate.");
+            this.isGeneratingAllFrames = false; // Ensure flag is off
+            this.checkAllFramesComplete(); // Update button state
+            return;
+        }
+        
+        // Reset the completion message flag
+        this.completionMessageShown = false;
         
         // Set flag that we're generating all frames sequentially
         this.isGeneratingAllFrames = true;
         
-        // Start with the first frame
-        this.generateFrame(0);
-        
-        // Add a message to indicate we're generating all frames
-        this.addAIMessage(`
-            <p>I'm now generating all ${this.currentPlan.frameCount} frames of your animation in sequence.</p>
-            <p>This process may take a few moments for each frame. The frames will appear as they're created.</p>
-        `);
+        // --- MODIFIED: Reset status for frames that are 'error' or 'pending' before starting ---
+        let firstFrameToGenerate = -1;
+        this.currentPlan.frames.forEach((frame, index) => {
+            // Only reset if it's not already complete
+            if (frame.status !== 'complete') {
+                frame.status = 'pending'; // Reset to pending
+                frame.errorMessage = null;
+                if (firstFrameToGenerate === -1) {
+                    firstFrameToGenerate = index;
+                }
+            }
+        });
+
+        if (firstFrameToGenerate === -1) {
+             // All frames were already complete
+             console.log("All frames are already generated.");
+             this.isGeneratingAllFrames = false;
+             this.checkAllFramesComplete(); // Update button to "Regenerate All"
+             this.showSystemMessage("All frames were already generated. Click 'Regenerate All Frames' if you want to create them again.");
+             return;
+        }
+        // --- END MODIFIED ---
+
+        // Refresh UI for potentially reset frames
+        this.refreshAnimationPlan();
+
+        // Update the button state immediately to show "Generating..."
+        this.checkAllFramesComplete();
+
+        // --- REMOVED Scroll logic from here ---
+        // const firstFrameElement = document.querySelector(`.prompter-frame[data-index="${firstFrameToGenerate}"]`);
+        // if (firstFrameElement) { ... scroll logic ... }
+
+        // Start with the first frame that needs generation
+        // The scroll will now happen INSIDE generateFrame
+        setTimeout(() => {
+             if (this.isGeneratingAllFrames) { // Check if still active
+                 this.generateFrame(firstFrameToGenerate);
+             }
+        }, 100); // Shorter delay, just enough for UI updates
     }
     
     exportAsGif() {
-        if (!this.currentPlan || !this.currentPlan.frames.length === 0) return;
-        
-        // Check if all frames are complete
+        if (!this.currentPlan || !this.currentPlan.frames || this.currentPlan.frameCount === 0) {
+            // Keep the error message for no frames
+            this.addAIMessage(`
+                <div class="prompter-error-message prompter-export-error-message">
+                     <div class="error-icon-container">
+                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                            <line x1="12" y1="9" x2="12" y2="13"></line>
+                            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                        </svg>
+                     </div>
+                     <div class="error-summary">Cannot Export Animation</div>
+                     <div class="error-details">
+                        <p>There are no frames in your animation plan yet.</p>
+                    </div>
+                </div>
+            `, true); // Mark as error
+            return;
+        }
+
         let allFramesReady = true;
         const frameImages = [];
+        let incompleteFrames = [];
         
         for (let i = 0; i < this.currentPlan.frames.length; i++) {
             const frame = this.currentPlan.frames[i];
             if (frame.status !== 'complete' || !frame.imageUrl) {
                 allFramesReady = false;
-                break;
-            }
+                incompleteFrames.push(i + 1); // Store frame number (1-based)
+            } else {
             frameImages.push(frame.imageUrl);
+            }
         }
         
         if (!allFramesReady) {
+            // Keep the error message for incomplete frames
+            const missingFramesList = incompleteFrames.join(', ');
+            const framePlural = incompleteFrames.length > 1 ? 'frames' : 'frame';
+            const verbPlural = incompleteFrames.length > 1 ? 'are' : 'is';
+            
             this.addAIMessage(`
-                <p>Cannot export animation: some frames are not yet generated.</p>
-                <p>Please generate all frames before exporting.</p>
-            `);
+                <div class="prompter-error-message prompter-export-error-message">
+                     <div class="error-icon-container">
+                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                            <line x1="12" y1="9" x2="12" y2="13"></line>
+                            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                        </svg>
+                </div>
+                     <div class="error-summary">Cannot Export Animation</div>
+                     <div class="error-details">
+                        <p>Frame${incompleteFrames.length > 1 ? 's' : ''} ${missingFramesList} ${verbPlural} not generated yet.</p>
+                        <p>Please generate the missing ${framePlural} before exporting.</p>
+                    </div>
+                </div>
+            `, true); // Mark as error
             return;
         }
         
-        // Show loading message
-        const loadingMessage = this.addAIMessage(`
-            <p>Creating your animation, please wait...</p>
-            <div class="prompter-loading">
-                <div class="prompter-loading-animation">
-                    <div class="prompter-loading-dot"></div>
-                    <div class="prompter-loading-dot"></div>
-                    <div class="prompter-loading-dot"></div>
+        // --- MODIFICATION START ---
+        // Instead of generating message and creating GIF directly, show the interactive UI
+        this.showGifExportUI(frameImages);
+        // --- MODIFICATION END ---
+    }
+
+    // --- NEW METHOD: Show Interactive GIF Export UI ---
+    showGifExportUI(frameImages) {
+        // Find the message container holding the animation plan
+        const planMessage = document.querySelector('.prompter-frames-container')?.closest('.prompter-message');
+        if (!planMessage) return;
+
+        // Find or create a dedicated container for the export UI within the message
+        let exportUIContainer = planMessage.querySelector('.prompter-export-ui-container');
+        if (!exportUIContainer) {
+            exportUIContainer = document.createElement('div');
+            exportUIContainer.className = 'prompter-export-ui-container';
+            // Insert it after the main actions, or at the end of the message content
+            const actionsDiv = planMessage.querySelector('.prompter-actions');
+            if (actionsDiv && actionsDiv.parentNode) {
+                actionsDiv.parentNode.insertBefore(exportUIContainer, actionsDiv.nextSibling);
+            } else {
+                planMessage.querySelector('.prompter-message-content')?.appendChild(exportUIContainer);
+            }
+        }
+
+        // Default delay
+        const defaultDelay = 200; // ms
+
+        exportUIContainer.innerHTML = `
+            <div class="prompter-export-ui active">
+                <div class="prompter-export-header">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><path d="M8 3v18"></path><path d="M16 3v18"></path><path d="M3 8h18"></path><path d="M3 16h18"></path>
+                                </svg>
+                    Create GIF Animation
+                    </div>
+                <div class="prompter-export-preview">
+                    <img src="${frameImages[0]}" alt="GIF Preview Frame">
+                    <div class="frame-count-badge">${frameImages.length} Frames</div>
+                </div>
+                <div class="prompter-export-settings">
+                    <label for="gif-delay-input">Frame Delay (ms):</label>
+                    <input type="number" id="gif-delay-input" class="gif-delay-input" value="${defaultDelay}" min="50" max="5000" step="50">
+                    <div class="delay-slider-container">
+                         <input type="range" id="gif-delay-slider" min="50" max="1000" value="${defaultDelay}" step="50">
+                         <span class="delay-preview">${(defaultDelay / 1000).toFixed(2)}s</span>
+                    </div>
+                </div>
+                <div class="prompter-export-actions">
+                    <button class="prompter-export-button cancel">
+                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg >
+                        Cancel
+                    </button>
+                    <button class="prompter-export-button create">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 1-10 10"/><path d="m16 4-3 3 3 3"/><path d="M8 20 5 17l3-3"/></svg >
+                        Create GIF
+                    </button>
                 </div>
             </div>
-        `);
-        
-        // Create the GIF
-        this.createGif(frameImages)
-            .then(gifBlob => {
-                // Remove loading message
-                if (loadingMessage && loadingMessage.parentNode) {
-                    loadingMessage.parentNode.removeChild(loadingMessage);
-                }
-                
-                // Create object URL for the GIF
-                const gifUrl = URL.createObjectURL(gifBlob);
-                
-                // Add success message with preview and download link
-                const messageDiv = this.addAIMessage(`
-                    <p>Your animation is ready! Here's a preview:</p>
-                    <div class="prompter-animation-preview">
-                        <img src="${gifUrl}" alt="Animation GIF" class="prompter-animation-gif">
-                    </div>
-                    <p>You can download it using the button below:</p>
-                    <div class="prompter-download-container">
-                        <a href="${gifUrl}" download="animation.gif" class="prompter-download-button">
-                            Download GIF
-                        </a>
-                    </div>
-                `);
-                
-                // Add input area for further questions
-                this.addPrompterInputArea(messageDiv);
-            })
-            .catch(error => {
-                console.error('Error creating GIF:', error);
-                
-                // Remove loading message
-                if (loadingMessage && loadingMessage.parentNode) {
-                    loadingMessage.parentNode.removeChild(loadingMessage);
-                }
-                
-                // Show error message
-                this.addAIMessage(`
-                    <p>I encountered an error while creating your animation: ${error.message}</p>
-                    <p>Please try again or consider using fewer frames.</p>
-                `);
-            });
+        `;
+
+        // Add event listeners
+        const uiElement = exportUIContainer.querySelector('.prompter-export-ui');
+        const cancelButton = uiElement.querySelector('.prompter-export-button.cancel');
+        const createButton = uiElement.querySelector('.prompter-export-button.create');
+        const delayInput = uiElement.querySelector('#gif-delay-input');
+        const delaySlider = uiElement.querySelector('#gif-delay-slider');
+        const delayPreview = uiElement.querySelector('.delay-preview');
+        const previewImage = uiElement.querySelector('.prompter-export-preview img');
+
+        // Sync slider and input
+        const updateDelay = (value) => {
+            const clampedValue = Math.max(50, Math.min(5000, parseInt(value) || defaultDelay));
+            delayInput.value = clampedValue;
+            delaySlider.value = Math.min(1000, clampedValue); // Slider max is 1000 for better control range
+            delayPreview.textContent = `${(clampedValue / 1000).toFixed(2)}s`;
+        };
+
+        delayInput.addEventListener('input', (e) => updateDelay(e.target.value));
+        delaySlider.addEventListener('input', (e) => updateDelay(e.target.value));
+        delayInput.addEventListener('change', (e) => updateDelay(e.target.value)); // Ensure value snaps if user types outside range and blurs
+
+        // Simple preview animation on hover/focus (optional)
+        let previewInterval = null;
+        let currentFrameIndex = 0;
+        uiElement.querySelector('.prompter-export-preview').addEventListener('mouseenter', () => {
+            if (previewInterval) clearInterval(previewInterval);
+            previewInterval = setInterval(() => {
+                currentFrameIndex = (currentFrameIndex + 1) % frameImages.length;
+                previewImage.src = frameImages[currentFrameIndex];
+            }, parseInt(delayInput.value) || defaultDelay);
+        });
+        uiElement.querySelector('.prompter-export-preview').addEventListener('mouseleave', () => {
+            if (previewInterval) clearInterval(previewInterval);
+            previewImage.src = frameImages[0]; // Reset to first frame
+            currentFrameIndex = 0;
+        });
+
+
+        cancelButton.addEventListener('click', () => {
+            uiElement.classList.remove('active');
+            // Optionally remove the container after animation
+            setTimeout(() => exportUIContainer.innerHTML = '', 300);
+        });
+
+        createButton.addEventListener('click', () => {
+            const delay = parseInt(delayInput.value) || defaultDelay;
+            this.startGifCreationFromUI(exportUIContainer, frameImages, delay);
+        });
+
+        // Scroll the new UI into view
+        uiElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
-    
-    async createGif(frameUrls) {
-        // Load gifshot library dynamically if not already loaded
+
+    // --- NEW METHOD: Start GIF Creation from UI ---
+    async startGifCreationFromUI(uiContainer, frameImages, delay) {
+        const uiElement = uiContainer.querySelector('.prompter-export-ui');
+        if (!uiElement) return;
+
+        // Update UI to loading state
+        uiElement.classList.add('loading');
+        uiElement.querySelector('.prompter-export-actions').innerHTML = `
+            <button class="prompter-export-button loading" disabled>
+                <div class="prompter-loading-animation" style="width: 16px; height: 16px; margin-right: 8px;">
+                    <div class="prompter-loading-dot"></div><div class="prompter-loading-dot"></div><div class="prompter-loading-dot"></div>
+                </div>
+                Creating GIF...
+            </button>
+        `;
+        uiElement.querySelector('.prompter-export-settings').style.opacity = '0.5';
+        uiElement.querySelectorAll('input').forEach(input => input.disabled = true);
+
+        try {
+            const gifBlob = await this.createGif(frameImages, delay);
+                    const gifUrl = URL.createObjectURL(gifBlob);
+            this.displayGeneratedGif(uiContainer, gifUrl, delay); // Pass delay for recreate
+        } catch (error) {
+            console.error('Error creating GIF:', error);
+            uiContainer.innerHTML = `
+                <div class="prompter-export-ui active error">
+                    <div class="prompter-export-header">
+                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg >
+                        GIF Creation Failed
+                        </div>
+                    <p class="error-message">${error.message}</p>
+                    <div class="prompter-export-actions">
+                         <button class="prompter-export-button cancel">Close</button>
+                         <button class="prompter-export-button recreate">Try Again</button>
+                        </div>
+                </div>
+            `;
+            // Add listeners for close/try again
+            uiContainer.querySelector('.cancel').addEventListener('click', () => uiContainer.innerHTML = '');
+            uiContainer.querySelector('.recreate').addEventListener('click', () => this.showGifExportUI(frameImages));
+        }
+    }
+
+    // --- NEW METHOD: Display Final GIF ---
+    displayGeneratedGif(uiContainer, gifUrl, originalDelay) {
+         uiContainer.innerHTML = `
+            <div class="prompter-export-ui active result">
+                <div class="prompter-export-header">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m9 12 2 2 4-4"/></svg >
+                    GIF Ready!
+                        </div>
+                <div class="prompter-gif-final-preview">
+                    <img src="${gifUrl}" alt="Generated Animation GIF">
+                </div>
+                 <div class="prompter-export-actions final">
+                     <button class="prompter-export-button download">
+                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg >
+                        Download
+                    </button>
+                     <button class="prompter-export-button recreate">
+                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v6h6"/><path d="M21 12A9 9 0 0 0 6 5.3L3 8"/><path d="M21 22v-6h-6"/><path d="M3 12a9 9 0 0 0 15 6.7l3-2.7"/></svg >
+                        Edit Settings
+                    </button>
+                     <button class="prompter-export-button close">
+                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg >
+                        Close
+                    </button>
+                </div>
+            </div>
+        `;
+
+        const downloadBtn = uiContainer.querySelector('.download');
+        const recreateBtn = uiContainer.querySelector('.recreate');
+        const closeBtn = uiContainer.querySelector('.close');
+
+        downloadBtn.addEventListener('click', () => {
+            const link = document.createElement('a');
+            link.href = gifUrl;
+            link.download = `animation_${Date.now()}.gif`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+
+        recreateBtn.addEventListener('click', () => {
+            // Need frameImages again - might need to store them temporarily or re-fetch
+            const frameImages = this.currentPlan.frames
+                                    .filter(f => f.status === 'complete' && f.imageUrl)
+                                    .map(f => f.imageUrl);
+            if (frameImages.length > 0) {
+                this.showGifExportUI(frameImages); // Show settings again
+            } else {
+                 uiContainer.innerHTML = '<p>Error: Could not find original frames.</p>';
+            }
+        });
+
+        closeBtn.addEventListener('click', () => {
+             uiContainer.querySelector('.prompter-export-ui').classList.remove('active');
+             setTimeout(() => uiContainer.innerHTML = '', 300);
+        });
+    }
+
+
+    // --- MODIFIED: createGif accepts delay ---
+    async createGif(frameUrls, delay = 200) { // Default delay 200ms
         await this.loadGifshotLibrary();
         
         return new Promise(async (resolve, reject) => {
             try {
-                // Load all images first
-                const images = frameUrls;
+                if (!window.gifshot) {
+                    throw new Error('GIF library (gifshot) not loaded.');
+                }
                 
-                // Calculate optimal dimensions
+                const images = frameUrls;
+                if (images.length < 2) {
+                     throw new Error('Need at least 2 frames for a GIF.');
+                }
+                
                 const dimensions = await this.calculateOptimalDimensions(images);
                 
-                // Create GIF with gifshot
                 window.gifshot.createGIF({
                     images: images,
                     gifWidth: dimensions.width,
                     gifHeight: dimensions.height,
-                    interval: 0.2, // 200ms between frames
+                    interval: delay / 1000, // Convert ms to seconds
                     numFrames: images.length,
-                    frameDuration: 1,
-                    sampleInterval: 10,
+                    frameDuration: 1, // Duration of 1 frame relative to interval
+                    sampleInterval: 10, // Lower is better quality, higher is faster
+                    numWorkers: 2, // Use 2 workers for potentially faster processing
                     progressCallback: (progress) => {
-                        console.log('GIF creation progress:', Math.round(progress * 100) + '%');
+                        // console.log('GIF creation progress:', Math.round(progress * 100) + '%');
+                        // Could update a progress bar in the UI here
                     }
                 }, (result) => {
                     if (!result.error) {
-                        // Convert the data URL to a Blob
                         const binaryString = window.atob(result.image.split(',')[1]);
                         const len = binaryString.length;
                         const bytes = new Uint8Array(len);
@@ -1534,7 +2456,6 @@ The style should be consistent with other frames in the sequence, with smooth tr
                             bytes[i] = binaryString.charCodeAt(i);
                         }
                         const blob = new Blob([bytes.buffer], { type: 'image/gif' });
-                        
                         resolve(blob);
                     } else {
                         reject(new Error(result.errorMsg || 'Failed to create GIF'));
@@ -1663,6 +2584,1313 @@ The style should be consistent with other frames in the sequence, with smooth tr
             img.onerror = () => reject(new Error('Failed to load image'));
             img.src = url;
         });
+    }
+
+    // Add method to generate AI messages for completion of frames
+    async generateCompletionMessage() {
+        try {
+            // Check if Gemini API is available
+            if (!window.app || !window.app.model) {
+                return `All frames are done. You can export as a GIF, regenerate specific frames if you're not satisfied, or continue the conversation.`;
+            }
+            
+            // Create a structured prompt for the completion message
+            const completionPrompt = {
+                contents: [{
+                    role: 'user',
+                    parts: [
+                        {
+                            text: `You are a skilled but slightly impatient animation assistant with a touch of sarcasm. You have a distinctive personality - you're direct, occasionally snarky, but still helpful. You're good at what you do and you know it. You never use emojis or exclamation points excessively.
+
+All frames of the user's animation have now been generated successfully.
+
+Write a brief message informing them that all frames are complete and what options they have next. Your response must:
+1. Be concise (2-3 sentences maximum)
+2. Have a hint of sarcasm or dry wit without being rude
+3. Tell them all frames are ready
+4. Mention their three options: export as GIF, regenerate frames, or continue conversation
+5. NOT use bullet points, numbered lists, or emojis
+6. NOT be overly enthusiastic or use phrases like "Woohoo!" or "That was a blast!"
+7. Use markdown formatting sparingly (bold or italic) only where it adds impact
+8. Sound like a real person with an edge, not a generic AI
+9. Avoid cringe phrases like "animation magic" or "I'm all ears"
+
+Remember, you're skilled but slightly impatient - write like someone who's competent and gets straight to the point.`
+                        }
+                    ]
+                }],
+                generationConfig: {
+                    temperature: 0.7,
+                    topP: 0.9,
+                    topK: 40,
+                    maxOutputTokens: 150
+                }
+            };
+            
+            // Call the Gemini API
+            const result = await window.app.model.generateContent(completionPrompt);
+            
+            if (!result || !result.response) {
+                throw new Error('Failed to generate completion message');
+            }
+            
+            // Extract the response text
+            return result.response.text();
+            
+        } catch (error) {
+            console.error('Error generating completion message:', error);
+            // Return a simple fallback message in case of error
+            return `All frames are done. You can export as a GIF, regenerate specific frames if you're not satisfied, or continue the conversation.`;
+        }
+    }
+    
+    // Method to generate message for starting all frame generation
+    async generateStartGenerationMessage(frameCount) {
+        try {
+            // Check if Gemini API is available
+            if (!window.app || !window.app.model) {
+                return `Generating ${frameCount} frames now. This will take a moment, so don't go anywhere.`;
+            }
+            
+            // Create a prompt for the message
+            const startPrompt = {
+                contents: [{
+                    role: 'user',
+                    parts: [
+                        {
+                            text: `You are a skilled but slightly impatient animation assistant with a touch of sarcasm. You have a distinctive personality - you're direct, occasionally snarky, but still helpful. You're good at what you do and you know it. You never use emojis or exclamation points excessively.
+
+The user has just clicked "Generate All Frames" to create all ${frameCount} frames of their animation.
+
+Write a brief message informing them that you're generating the frames. Your response must:
+1. Be concise (2-3 sentences maximum)
+2. Have a hint of sarcasm or dry wit without being rude
+3. Tell them you're generating all ${frameCount} frames
+4. Mention frames will appear as they're created
+5. NOT use bullet points, numbered lists, or emojis
+6. NOT be overly enthusiastic 
+7. Use markdown formatting sparingly (bold or italic) only where it adds impact
+8. Sound like a real person with an edge, not a generic AI
+9. Avoid cringe phrases like "let the magic happen" or "sit tight"
+
+Remember, you're skilled but slightly impatient - write like someone who's competent and gets straight to the point.`
+                        }
+                    ]
+                }],
+                generationConfig: {
+                    temperature: 0.7,
+                    topP: 0.9,
+                    topK: 40,
+                    maxOutputTokens: 150
+                }
+            };
+            
+            // Call the Gemini API
+            const result = await window.app.model.generateContent(startPrompt);
+            
+            if (!result || !result.response) {
+                throw new Error('Failed to generate start message');
+            }
+            
+            // Extract the response text
+            return result.response.text();
+            
+        } catch (error) {
+            console.error('Error generating start message:', error);
+            // Return a simple fallback message
+            return `Generating ${frameCount} frames now. This will take a moment, so don't go anywhere.`;
+        }
+    }
+    
+    // Method to generate message for feedback acknowledgment
+    async generateFeedbackResponse(hasImages = false, imageCount = 0) {
+        try {
+            // Check if Gemini API is available
+            if (!window.app || !window.app.model) {
+                let message = `Noted. Your feedback has been registered.`;
+                if (hasImages) {
+                    message += ` Got your ${imageCount} reference images too.`;
+                }
+                message += ` Want to generate all frames now or just update a specific one?`;
+                return message;
+            }
+            
+            // Create a prompt for the feedback response
+            const feedbackPrompt = {
+                contents: [{
+                    role: 'user',
+                    parts: [
+                        {
+                            text: `You are a skilled but slightly impatient animation assistant with a touch of sarcasm. You have a distinctive personality - you're direct, occasionally snarky, but still helpful. You're good at what you do and you know it. You never use emojis or exclamation points excessively.
+
+The user has just provided feedback on their animation${hasImages ? ` and uploaded ${imageCount} reference images` : ''}.
+
+Write a brief acknowledgment message. Your response must:
+1. Be concise (1-2 sentences maximum, plus a question)
+2. Have a hint of sarcasm or dry wit without being rude
+3. Acknowledge their feedback${hasImages ? ` and the ${imageCount} images they provided` : ''}
+4. Ask if they want to generate all frames or update a specific one
+5. NOT use bullet points, numbered lists, or emojis
+6. NOT be overly enthusiastic or use phrases like "I'm excited" 
+7. Use markdown formatting sparingly (bold or italic) only where it adds impact
+8. Sound like a real person with an edge, not a generic AI
+9. Avoid cringe phrases like "I've noted" or "I'm all ears"
+
+Remember, you're skilled but slightly impatient - write like someone who's competent and gets straight to the point.`
+                        }
+                    ]
+                }],
+                generationConfig: {
+                    temperature: 0.7,
+                    topP: 0.9,
+                    topK: 40,
+                    maxOutputTokens: 150
+                }
+            };
+            
+            // Call the Gemini API
+            const result = await window.app.model.generateContent(feedbackPrompt);
+            
+            if (!result || !result.response) {
+                throw new Error('Failed to generate feedback response');
+            }
+            
+            // Extract the response text
+            return result.response.text();
+            
+        } catch (error) {
+            console.error('Error generating feedback response:', error);
+            // Return a fallback message
+            let message = `Noted. Your feedback has been registered.`;
+            if (hasImages) {
+                message += ` Got your ${imageCount} reference images too.`;
+            }
+            message += ` Want to generate all frames now or just update a specific one?`;
+            return message;
+        }
+    }
+
+    // Method to generate message for GIF export progress
+    async generateExportMessage() {
+        try {
+            // Check if Gemini API is available
+            if (!window.app || !window.app.model) {
+                return `Creating your animation. Just a moment.
+
+<div class="prompter-loading">
+    <div class="prompter-loading-animation">
+        <div class="prompter-loading-dot"></div>
+        <div class="prompter-loading-dot"></div>
+        <div class="prompter-loading-dot"></div>
+    </div>
+</div>`;
+            }
+            
+            // Create a prompt for the export message
+            const exportPrompt = {
+                contents: [{
+                    role: 'user',
+                    parts: [
+                        {
+                            text: `You are a skilled but slightly impatient animation assistant with a touch of sarcasm. You have a distinctive personality - you're direct, occasionally snarky, but still helpful. You're good at what you do and you know it. You never use emojis or exclamation points excessively.
+
+The user has just requested to export their animation as a GIF.
+
+Write a brief message informing them that you're creating their animation. Your response must:
+1. Be very concise (1 sentence only)
+2. Have a hint of sarcasm or dry wit without being rude
+3. Tell them their animation is being created
+4. NOT use bullet points, numbered lists, or emojis
+5. NOT be overly enthusiastic 
+6. Use markdown formatting sparingly (bold or italic) only where it adds impact
+7. Sound like a real person with an edge, not a generic AI
+8. Avoid cringe phrases like "working my magic" or "please wait"
+
+Remember, you're skilled but slightly impatient - write like someone who's competent and gets straight to the point.`
+                        }
+                    ]
+                }],
+                generationConfig: {
+                    temperature: 0.7,
+                    topP: 0.9,
+                    topK: 40,
+                    maxOutputTokens: 100
+                }
+            };
+            
+            // Call the Gemini API
+            const result = await window.app.model.generateContent(exportPrompt);
+            
+            if (!result || !result.response) {
+                throw new Error('Failed to generate export message');
+            }
+            
+            // Extract the response text and add the loading animation HTML separately
+            const responseText = result.response.text();
+            return responseText + `
+
+<div class="prompter-loading">
+    <div class="prompter-loading-animation">
+        <div class="prompter-loading-dot"></div>
+        <div class="prompter-loading-dot"></div>
+        <div class="prompter-loading-dot"></div>
+    </div>
+</div>`;
+            
+        } catch (error) {
+            console.error('Error generating export message:', error);
+            // Return a fallback message with the required loading animation
+            return `Creating your animation. Just a moment.
+
+<div class="prompter-loading">
+    <div class="prompter-loading-animation">
+        <div class="prompter-loading-dot"></div>
+        <div class="prompter-loading-dot"></div>
+        <div class="prompter-loading-dot"></div>
+    </div>
+</div>`;
+        }
+    }
+
+    async deleteFrame(index) {
+        if (!this.currentPlan || index < 0 || index >= this.currentPlan.frameCount) return;
+        
+        // Get the frame element to animate its removal
+        const frameElement = document.querySelector(`.prompter-frame[data-index="${index}"]`);
+        if (frameElement) {
+            // Add delete animation
+            frameElement.style.transition = "all 0.5s ease";
+            frameElement.style.opacity = "0";
+            frameElement.style.transform = "scale(0.95) translateY(-10px)";
+            frameElement.style.overflow = "hidden";
+            
+            // Wait for animation to complete
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            frameElement.style.maxHeight = "0";
+            frameElement.style.margin = "0";
+            frameElement.style.padding = "0";
+            
+            // Wait for height animation
+            await new Promise(resolve => setTimeout(resolve, 300));
+        }
+        
+        // Remove the frame from the plan
+        this.currentPlan.frames.splice(index, 1);
+        
+        // Update frame count
+        this.currentPlan.frameCount = this.currentPlan.frames.length;
+        
+        // Update the indices of remaining frames
+        this.currentPlan.frames.forEach((frame, i) => {
+            frame.index = i;
+        });
+        
+        // Refresh the animation plan display
+        this.refreshAnimationPlan();
+        
+        // Show a success message
+        this.showFrameActionToast(`Frame ${index + 1} deleted successfully`, 'delete');
+    }
+
+    // Helper method to show a toast message for frame actions
+    showFrameActionToast(message, action = 'info') {
+        const toastContainer = document.querySelector('.prompter-toast-container') || (() => {
+            const container = document.createElement('div');
+            container.className = 'prompter-toast-container';
+            document.body.appendChild(container);
+            return container;
+        })();
+        
+        const toast = document.createElement('div');
+        toast.className = `prompter-toast prompter-toast-${action}`;
+        
+        // Choose icon based on action
+        let icon = '';
+        switch (action) {
+            case 'delete':
+                icon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 6h18"></path>
+                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+            </svg>`;
+                break;
+            case 'move':
+                icon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <polyline points="19 12 12 19 5 12"></polyline>
+            </svg>`;
+                break;
+            case 'add':
+                icon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect>
+                <line x1="12" y1="8" x2="12" y2="16"></line>
+                <line x1="8" y1="12" x2="16" y2="12"></line>
+            </svg>`;
+                break;
+            default:
+                icon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="16" x2="12" y2="12"></line>
+                <line x1="12" y1="8" x2="12.01" y2="8"></line>
+            </svg>`;
+        }
+        
+        toast.innerHTML = `
+            <div class="prompter-toast-icon">${icon}</div>
+            <div class="prompter-toast-message">${message}</div>
+        `;
+        
+        toastContainer.appendChild(toast);
+        
+        // Show the toast
+        setTimeout(() => {
+            toast.classList.add('show');
+        }, 10);
+        
+        // Hide and remove after delay
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.parentNode.removeChild(toast);
+                }
+                
+                // Remove container if empty
+                if (toastContainer.children.length === 0 && toastContainer.parentNode) {
+                    toastContainer.parentNode.removeChild(toastContainer);
+                }
+            }, 300);
+        }, 3000);
+    }
+
+    async moveFrame(index, direction) {
+        if (!this.currentPlan || 
+            index < 0 || 
+            index >= this.currentPlan.frameCount ||
+            (direction === 'up' && index === 0) ||
+            (direction === 'down' && index === this.currentPlan.frameCount - 1)) {
+            return;
+        }
+        
+        const newIndex = direction === 'up' ? index - 1 : index + 1;
+        
+        // Add visual effect to frames being moved
+        const frames = document.querySelectorAll('.prompter-frame');
+        const currentFrame = frames[index];
+        const targetFrame = frames[newIndex];
+        
+        if (currentFrame && targetFrame) {
+            // Mark the frames with a moving class for animation
+            currentFrame.classList.add('moving');
+            targetFrame.classList.add('moving');
+            
+            // Highlight the direction
+            const moveBtn = currentFrame.querySelector(`.frame-move-${direction}-btn`);
+            if (moveBtn) {
+                moveBtn.classList.add('loading');
+            }
+            
+            // Wait a moment for the animation to be visible - much shorter now
+            await new Promise(resolve => setTimeout(resolve, 150));
+        }
+        
+        // Swap frames
+        const temp = this.currentPlan.frames[index];
+        this.currentPlan.frames[index] = this.currentPlan.frames[newIndex];
+        this.currentPlan.frames[newIndex] = temp;
+        
+        // Update indices
+        this.currentPlan.frames[index].index = index;
+        this.currentPlan.frames[newIndex].index = newIndex;
+        
+        // Refresh the animation plan display
+        this.refreshAnimationPlan();
+        
+        // Show success toast notification
+        this.showFrameActionToast(`Frame ${index + 1} moved ${direction}`, 'move');
+        
+        // Scroll the moved frame into view
+        setTimeout(() => {
+            const movedFrame = document.querySelector(`.prompter-frame[data-index="${newIndex}"]`);
+            if (movedFrame) {
+                movedFrame.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                
+                // Add a brief highlight to the moved frame - shorter animation
+                movedFrame.classList.add('moving');
+                setTimeout(() => {
+                    movedFrame.classList.remove('moving');
+                }, 500);
+            }
+        }, 50);
+    }
+
+    async addNewFrame() {
+        if (!this.currentPlan) return;
+        
+        // Get the next index
+        const newIndex = this.currentPlan.frameCount;
+        
+        // Get the add frame button and show loading state
+        const addFrameBtn = document.querySelector('.add-frame-btn');
+        if (addFrameBtn) {
+            addFrameBtn.disabled = true; // Disable button
+            addFrameBtn.classList.add('loading'); // Add loading class for CSS animation
+            // --- REMOVED: Direct HTML manipulation for loading state ---
+            // addFrameBtn.innerHTML = `...`; 
+            // Update text content separately if needed
+            const btnSpan = addFrameBtn.querySelector('span');
+            if (btnSpan) btnSpan.textContent = `Creating frame ${newIndex + 1}...`;
+        }
+        
+        try {
+            // Get previous frame info to create context
+            const previousFrame = newIndex > 0 ? this.currentPlan.frames[newIndex - 1] : null;
+            let description = `New frame ${newIndex + 1}`;
+            let elements = [];
+            let transition = newIndex < this.currentPlan.frameCount ? "Transition to next frame" : "Final frame";
+            
+            // Generate a context-aware description based on the previous frame
+            if (previousFrame) {
+                // Use Gemini to generate a contextually appropriate next frame
+                const result = await this.generateNextFrameWithAI(previousFrame, newIndex, this.currentPlan.frameCount + 1);
+                description = result.description;
+                elements = result.elements || [];
+                transition = result.transition || transition;
+            }
+            
+            // Create prompt based on updated info
+            const prompt = this.generateFramePrompt(
+                this.currentPlan.prompt,
+                description,
+                newIndex,
+                this.currentPlan.frameCount + 1,
+                elements,
+                transition
+            );
+            
+            // Create a new frame
+            const newFrame = {
+                index: newIndex,
+                description: description,
+                elements: elements,
+                transition: transition,
+                prompt: prompt,
+                imageUrl: null,
+                status: 'pending'
+            };
+            
+            // Add the frame to the plan
+            this.currentPlan.frames.push(newFrame);
+            
+            // Update frame count
+            this.currentPlan.frameCount = this.currentPlan.frames.length;
+            
+            // Show success toast notification
+            this.showFrameActionToast(`Frame ${newIndex + 1} added successfully`, 'add');
+            
+            // Refresh the animation plan display (this creates the new frame element)
+            this.refreshAnimationPlan();
+            
+            // --- ADDED: Add temporary class for entry animation ---
+            const newFrameElement = document.querySelector(`.prompter-frame[data-index="${newIndex}"]`);
+            if (newFrameElement) {
+                newFrameElement.classList.add('newly-added');
+                // Remove the class after entry animation duration (e.g., 1.5s)
+                setTimeout(() => {
+                    newFrameElement.classList.remove('newly-added');
+                }, 1500); 
+            }
+            // --- END ADDED ---
+            
+            // Auto-generate the new frame and scroll to it
+            setTimeout(() => {
+                if (newFrameElement) {
+                    newFrameElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+                // Start generation AFTER scrolling and potential entry animation start
+                this.generateFrame(newIndex);
+            }, 300); // Keep a small delay
+        } catch (error) {
+            console.error('Error creating new frame:', error);
+            
+            // Create a basic frame if AI generation fails
+            const fallbackFrame = {
+                index: newIndex,
+                description: `New frame ${newIndex + 1} of the animation`,
+                elements: [],
+                transition: newIndex < this.currentPlan.frameCount ? "Transition to next frame" : "Final frame",
+                prompt: this.generateFramePrompt(
+                    this.currentPlan.prompt,
+                    `New frame ${newIndex + 1} of the ${this.currentPlan.prompt} animation`,
+                    newIndex,
+                    this.currentPlan.frameCount + 1,
+                    [],
+                    ""
+                ),
+                imageUrl: null,
+                status: 'pending'
+            };
+            
+            // Add the fallback frame
+            this.currentPlan.frames.push(fallbackFrame);
+            this.currentPlan.frameCount = this.currentPlan.frames.length;
+            
+            // Show toast notification for fallback
+            this.showFrameActionToast(`Frame ${newIndex + 1} added with a basic template`, 'info');
+            
+            this.refreshAnimationPlan();
+            
+            setTimeout(() => {
+                const newFrameElement = document.querySelector(`.prompter-frame[data-index="${newIndex}"]`);
+                if (newFrameElement) {
+                    newFrameElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+                this.generateFrame(newIndex);
+            }, 300);
+        } finally {
+            // Reset the add frame button
+            if (addFrameBtn) {
+                addFrameBtn.disabled = false; // Re-enable button
+                addFrameBtn.classList.remove('loading'); // Remove loading class
+                // Restore original button text/icon
+                addFrameBtn.innerHTML = `
+                    <div class="add-frame-btn-content">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect>
+                            <line x1="12" y1="8" x2="12" y2="16"></line>
+                            <line x1="8" y1="12" x2="16" y2="12"></line>
+                        </svg>
+                        <span>Add Frame</span>
+                    </div>
+                `;
+            }
+        }
+    }
+
+    // New method to generate a contextually appropriate next frame using AI
+    async generateNextFrameWithAI(previousFrame, newIndex, totalFrames) {
+        try {
+            // Create a prompt for the AI to generate the next logical frame
+            const nextFramePrompt = {
+                contents: [{
+                    role: 'user',
+                    parts: [{
+                        text: `I'm creating an animation sequence and need help creating the next frame (frame ${newIndex + 1} of ${totalFrames}).
+                        
+The overall animation concept is: "${this.currentPlan.concept}"
+
+The previous frame (frame ${previousFrame.index + 1}) has this description:
+"${previousFrame.description}"
+
+Some key elements in that frame were: ${previousFrame.elements.map(el => `"${el}"`).join(', ')}
+
+Based on this context, please create a logical next frame that continues the animation progression.
+Format your response as a JSON object with this structure:
+{
+  "description": "Detailed description of what should be in this next frame",
+  "elements": ["key element 1", "key element 2", "key element 3"],
+  "transition": "How this frame transitions to the next (or concludes if it's the final frame)"
+}
+
+The description should be detailed but focused. Elements should be 2-4 specific visual components. The transition should explain how we move to the next frame.
+Only return the JSON structure without additional text.`
+                    }]
+                }],
+                generationConfig: {
+                    temperature: 0.7,
+                    topP: 0.95,
+                    topK: 40,
+                    responseModalities: ['text']
+                }
+            };
+
+            // Call the Gemini API
+            const result = await window.app.model.generateContent(nextFramePrompt);
+            
+            if (!result || !result.response) {
+                throw new Error('Failed to generate next frame description');
+            }
+            
+            // Extract the response text
+            const responseText = result.response.text();
+            
+            // Try to parse the JSON response
+            let frameData;
+            try {
+                // Find JSON in the response if there's any additional text
+                const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+                if (jsonMatch) {
+                    frameData = JSON.parse(jsonMatch[0]);
+                } else {
+                    frameData = JSON.parse(responseText);
+                }
+                
+                return {
+                    description: frameData.description,
+                    elements: frameData.elements || [],
+                    transition: frameData.transition || "Transition to next frame"
+                };
+            } catch (parseError) {
+                console.error('Failed to parse frame JSON:', parseError);
+                throw parseError;
+            }
+        } catch (error) {
+            console.error('Error generating next frame with AI:', error);
+            throw error;
+        }
+    }
+
+    refreshAnimationPlan() {
+        // Find the existing animation plan container
+        const existingContainer = document.querySelector('.prompter-frames-container');
+        if (!existingContainer) return;
+        
+        // Update the frame count display
+        const frameCountDisplay = document.querySelector('.animation-frame-count');
+        if (frameCountDisplay) {
+            frameCountDisplay.textContent = `${this.currentPlan.frameCount} frames`;
+        }
+        
+        existingContainer.innerHTML = '';
+        
+        // Re-add all frames
+        this.currentPlan.frames.forEach((frame, index) => {
+            const frameElement = document.createElement('div');
+            frameElement.className = `prompter-frame ${frame.status === 'generating' ? 'generating' : ''} ${frame.status === 'error' ? 'error' : ''}`;
+            frameElement.dataset.index = index;
+            
+            let actionButtonsHTML = '';
+            if (frame.status === 'complete' && frame.imageUrl) {
+                // --- MODIFIED: Regenerate button icon and class ---
+                actionButtonsHTML = `
+                    <button class="prompter-frame-button prompter-edit-btn" data-index="${index}">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                        </svg>
+                        <span>Edit Prompt</span>
+                    </button>
+                    <button class="prompter-frame-button prompter-regenerate-btn" data-index="${index}">
+                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2 19a1 1 0 0 0-.29.71V21a1 1 0 0 0 1 1h1.29a1 1 0 0 0 .71-.29L19 5.72a1.21 1.21 0 0 0 0-1.72Z"/><path d="m14 6 6 6"/><path d="M18 22v-2"/><path d="M22 18h-2"/>
+                        </svg>
+                        <span>Regenerate</span>
+                    </button>`;
+                // --- END MODIFIED ---
+            } else if (frame.status === 'generating') {
+                 actionButtonsHTML = `
+                    <button class="prompter-frame-button generating" data-index="${index}" disabled>
+                        <div class="prompter-generating-indicator">
+                            <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+                        </div>
+                        <span>Generating</span> 
+                    </button>`;
+            } else if (frame.status === 'error') {
+                 actionButtonsHTML = `
+                    <button class="prompter-frame-button prompter-retry-btn" data-index="${index}">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M3 2v6h6"></path>
+                            <path d="M3 8a10 10 0 0 1 14 0m4 14v-6h-6"></path>
+                            <path d="M21 16a10 10 0 0 1-14 0"></path>
+                        </svg>
+                        <span>Retry</span>
+                    </button>`;
+            } else { // Default: pending
+                 actionButtonsHTML = `
+                    <button class="prompter-frame-button prompter-generate-btn" data-index="${index}">
+                        <svg class="magic-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                           <path d="M12 2 L14.5 9.5 L22 12 L14.5 14.5 L12 22 L9.5 14.5 L2 12 L9.5 9.5 Z"/>
+                           <path d="M12 8 L13 11 L16 12 L13 13 L12 16 L11 13 L8 12 L11 11 Z" fill="currentColor" stroke-width="1"/>
+                        </svg>
+                        <span>Generate Frame</span>
+                    </button>`;
+            }
+
+            // ... (determine placeholderContent - remains the same) ...
+            let placeholderContent = '';
+            if (frame.status === 'complete' && frame.imageUrl) {
+                placeholderContent = `
+                    <img src="${frame.imageUrl}" class="prompter-frame-image">
+                    <div class="prompter-frame-info-icon" title="View Frame Details">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="16" x2="12" y2="12"></line>
+                            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                        </svg>
+                    </div>`;
+            } else if (frame.status === 'generating') {
+                placeholderContent = `<div class="prompter-magical-loading">Generating...</div>`; 
+            } else if (frame.status === 'error') {
+                 const errorMessage = frame.errorMessage || 'Check console for details.'; // Use stored error message if available
+                 placeholderContent = `
+                    <div class="prompter-frame-error">
+                        <div class="error-bg-icon"></div>
+                        <div class="error-status-pill">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="8" x2="12" y2="12"></line>
+                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                        </svg>
+                        Generation Failed
+                    </div>
+                    <div class="error-tooltip">${errorMessage}</div> 
+                    </div>`;
+            } else { // Default: pending
+                placeholderContent = `
+                    <div class="prompter-frame-empty-state">
+                        <div class="frame-bg-icon"></div>
+                        <div class="frame-counter-pill">Frame ${index + 1}</div>
+                    </div>`;
+            }
+
+            // ... (set frameElement.innerHTML - remains the same) ...
+            frameElement.innerHTML = `
+                <div class="prompter-frame-controls">
+                    <button class="frame-control-btn frame-move-up-btn" title="Move Up" data-index="${index}" ${index === 0 ? 'disabled' : ''}>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="m18 15-6-6-6 6"/>
+                        </svg>
+                    </button>
+                    <button class="frame-control-btn frame-move-down-btn" title="Move Down" data-index="${index}" ${index === this.currentPlan.frameCount - 1 ? 'disabled' : ''}>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="m6 9 6 6 6-6"/>
+                        </svg>
+                    </button>
+                    <button class="frame-control-btn frame-delete-btn" title="Delete Frame" data-index="${index}">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M3 6h18"></path>
+                            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                        </svg>
+                    </button>
+                </div>
+                <div class="prompter-frame-image-side">
+                    <div class="prompter-frame-image-placeholder" data-frame-number="Frame ${index + 1}">
+                        ${placeholderContent}
+                    </div>
+                </div>
+                <div class="prompter-frame-content-side">
+                    <div class="prompter-frame-header">
+                        <div style="display: flex; align-items: center;">
+                            <div class="prompter-frame-header-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect>
+                                    <line x1="7" y1="2" x2="7" y2="22"></line>
+                                    <line x1="17" y1="2" x2="17" y2="22"></line>
+                                    <line x1="2" y1="12" x2="22" y2="12"></line>
+                                    <line x1="2" y1="7" x2="7" y2="7"></line>
+                                    <line x1="2" y1="17" x2="7" y2="17"></line>
+                                    <line x1="17" y1="17" x2="22" y2="17"></line>
+                                    <line x1="17" y1="7" x2="22" y2="7"></line>
+                                </svg>
+                            </div>
+                            Frame ${index + 1}
+                        </div>
+                    </div>
+                    <div class="prompter-frame-content">
+                        <div class="prompter-frame-description">${frame.description}</div>
+                        <div class="prompter-frame-actions">
+                            ${actionButtonsHTML}
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // ... (append frameElement, trigger animation, attach listeners) ...
+            existingContainer.appendChild(frameElement);
+            
+            if (frame.status === 'generating') {
+                this.updateGeneratingAnimation(index);
+            }
+            
+            this.attachFrameEventListeners(frameElement);
+        });
+        
+        // ... (add "Add Frame" button) ...
+        const addFrameButton = document.createElement('div');
+        addFrameButton.className = 'add-frame-btn';
+        addFrameButton.innerHTML = `
+            <div class="add-frame-btn-content">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect>
+                    <line x1="12" y1="8" x2="12" y2="16"></line>
+                    <line x1="8" y1="12" x2="16" y2="12"></line>
+                </svg>
+                <span>Add Frame</span>
+            </div>
+        `;
+        existingContainer.appendChild(addFrameButton);
+        
+        addFrameButton.addEventListener('click', () => {
+            this.addNewFrame();
+        });
+        
+        // ... (update export button status) ...
+        const exportBtn = document.querySelector('.prompter-export');
+        if (exportBtn) {
+            const allFramesGenerated = this.currentPlan.frames.every(frame => frame.imageUrl);
+            exportBtn.disabled = !allFramesGenerated;
+        }
+    }
+
+    attachFrameEventListeners(frameElement) {
+        const index = parseInt(frameElement.dataset.index);
+        
+        // ... (move up/down/delete listeners remain the same) ...
+        const moveUpBtn = frameElement.querySelector('.frame-move-up-btn');
+        const moveDownBtn = frameElement.querySelector('.frame-move-down-btn');
+        const deleteBtn = frameElement.querySelector('.frame-delete-btn');
+        
+        if (moveUpBtn) {
+            moveUpBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.moveFrame(index, 'up');
+            });
+            // Disable styling moved to CSS :disabled selector
+        }
+        
+        if (moveDownBtn) {
+            moveDownBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.moveFrame(index, 'down');
+            });
+             // Disable styling moved to CSS :disabled selector
+        }
+        
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (this.currentPlan.frames[index].imageUrl) {
+                    if (confirm(`Are you sure you want to delete Frame ${index + 1}? This cannot be undone.`)) {
+                        this.deleteFrame(index);
+                    }
+                } else {
+                    this.deleteFrame(index);
+                }
+            });
+        }
+        
+        // Add generate button listener
+        const generateBtn = frameElement.querySelector('.prompter-generate-btn');
+        if (generateBtn) {
+            generateBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                // generateFrame already sets status to 'generating' and refreshes UI
+                this.generateFrame(index);
+            });
+        }
+        
+        // Add edit button listener
+        const editBtn = frameElement.querySelector('.prompter-edit-btn');
+        if (editBtn) {
+            editBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.editFramePrompt(index);
+            });
+        }
+        
+        // Add regenerate button listener
+        const regenerateBtn = frameElement.querySelector('.prompter-regenerate-btn');
+        if (regenerateBtn) {
+            regenerateBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+
+                // --- MODIFICATION START ---
+                // Explicitly set status to 'generating' BEFORE refreshing UI
+                this.currentPlan.frames[index].imageUrl = null; // Clear image
+                this.currentPlan.frames[index].status = 'generating'; // Set to generating
+                this.currentPlan.frames[index].errorMessage = null; // Clear any previous error
+
+                // Refresh UI to show the "Generating..." button state immediately
+                this.refreshSingleFrameUI(index);
+
+                // Now call the generation function with the regeneration flag
+                // It will handle the actual image generation and subsequent UI updates on completion/error
+                this.generateImageWithGemini(index, true);
+                // --- MODIFICATION END ---
+            });
+        }
+
+        // Add retry button listener
+        const retryBtn = frameElement.querySelector('.prompter-retry-btn');
+        if (retryBtn) {
+            retryBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                 // --- MODIFICATION START: Update status and UI *before* generating ---
+                // Mark frame as generating first
+                this.currentPlan.frames[index].status = 'generating';
+                this.currentPlan.frames[index].errorMessage = null; // Clear error message
+
+                // Refresh UI to show "Generating..." button immediately
+                this.refreshSingleFrameUI(index);
+
+                // Now call generateFrame, which handles the rest (including API call)
+                // Pass true to indicate this is a retry/regeneration attempt for generateImageWithGemini
+                this.generateImageWithGemini(index, true);
+                // --- MODIFICATION END ---
+            });
+        }
+        
+        // Add info icon listener
+            const infoIcon = frameElement.querySelector('.prompter-frame-info-icon');
+            if (infoIcon) {
+            if (!infoIcon.dataset.listenerAttached) {
+                infoIcon.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.showFramePromptDialog(index);
+                });
+                infoIcon.dataset.listenerAttached = 'true';
+            }
+        }
+    }
+
+    // --- ADDED: Helper to refresh UI for a single frame ---
+    refreshSingleFrameUI(index) {
+        const frameElement = document.querySelector(`.prompter-frame[data-index="${index}"]`);
+        if (!frameElement || !this.currentPlan || !this.currentPlan.frames[index]) return;
+
+        const frame = this.currentPlan.frames[index];
+        
+        // Update classes
+        frameElement.className = `prompter-frame ${frame.status === 'generating' ? 'generating' : ''} ${frame.status === 'error' ? 'error' : ''}`;
+
+        // Update placeholder
+        const placeholder = frameElement.querySelector('.prompter-frame-image-placeholder');
+        if (placeholder) {
+             let placeholderContent = '';
+             if (frame.status === 'complete' && frame.imageUrl) {
+                 placeholderContent = `
+                    <img src="${frame.imageUrl}" class="prompter-frame-image">
+                    <div class="prompter-frame-info-icon" title="View Frame Details">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="16" x2="12" y2="12"></line>
+                            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                        </svg>
+                    </div>`;
+             }
+             else if (frame.status === 'generating') {
+                 // Use the magical loading animation here too
+                 placeholderContent = `<div class="prompter-magical-loading">Generating...</div>`;
+             }
+             else if (frame.status === 'error') {
+                 const { displayMessage, detailsHTML } = this._parseErrorMessage(frame.errorMessage || 'Unknown error');
+                 placeholderContent = `
+                    <div class="prompter-frame-error">
+                        <div class="error-icon-container">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="8" x2="12" y2="12"></line>
+                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                        </svg>
+                    </div>
+                        <div class="error-summary">${displayMessage}</div>
+                        <div class="error-details">
+                            ${detailsHTML}
+                        </div>
+                        <button class="error-details-toggle" title="Show/Hide Details">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        </button>
+                    </div>
+                `;
+             }
+             else { // Pending
+                 placeholderContent = `
+                    <div class="prompter-frame-empty-state">
+                        <div class="frame-bg-icon"></div>
+                        <div class="frame-counter-pill">Frame ${index + 1}</div>
+                    </div>`;
+             }
+             placeholder.innerHTML = placeholderContent;
+
+             // Add toggle listener for error details if needed
+             if (frame.status === 'error') {
+                 const toggleBtn = placeholder.querySelector('.error-details-toggle');
+                 if (toggleBtn && !toggleBtn.dataset.listenerAttached) {
+                     toggleBtn.addEventListener('click', (e) => {
+                         e.stopPropagation();
+                         const errorContainer = e.target.closest('.prompter-frame-error');
+                         if (errorContainer) {
+                             errorContainer.classList.toggle('show-details');
+                             const svg = e.target.closest('button').querySelector('svg');
+                             if (svg) {
+                                 svg.style.transform = errorContainer.classList.contains('show-details') ? 'rotate(180deg)' : 'rotate(0deg)';
+                             }
+                         }
+                     });
+                     toggleBtn.dataset.listenerAttached = 'true';
+                 }
+             }
+        }
+
+        // Update actions
+        const actionsContainer = frameElement.querySelector('.prompter-frame-actions');
+        if (actionsContainer) {
+             let actionButtonsHTML = '';
+             if (frame.status === 'complete' && frame.imageUrl) {
+                 actionButtonsHTML = `
+                    <button class="prompter-frame-button prompter-edit-btn" data-index="${index}">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                        </svg>
+                        <span>Edit Prompt</span>
+                    </button>
+                    <button class="prompter-frame-button prompter-regenerate-btn" data-index="${index}">
+                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2 19a1 1 0 0 0-.29.71V21a1 1 0 0 0 1 1h1.29a1 1 0 0 0 .71-.29L19 5.72a1.21 1.21 0 0 0 0-1.72Z"/><path d="m14 6 6 6"/><path d="M18 22v-2"/><path d="M22 18h-2"/>
+                        </svg>
+                        <span>Regenerate</span>
+                    </button>`;
+             }
+             else if (frame.status === 'generating') {
+                 // --- Ensure this button shows correctly ---
+                 actionButtonsHTML = `
+                    <button class="prompter-frame-button generating" data-index="${index}" disabled>
+                        <div class="prompter-generating-indicator">
+                            <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+                        </div>
+                        <span>Generating</span>
+                    </button>`;
+             }
+             else if (frame.status === 'error') {
+                 // --- MODIFICATION: Ensure ONLY retry button shows on error ---
+                 actionButtonsHTML = `
+                    <button class="prompter-frame-button prompter-retry-btn" data-index="${index}">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M3 2v6h6"></path>
+                            <path d="M3 8a10 10 0 0 1 14 0m4 14v-6h-6"></path>
+                            <path d="M21 16a10 10 0 0 1-14 0"></path>
+                        </svg>
+                        <span>Retry</span>
+                    </button>`;
+                 // --- END MODIFICATION ---
+             }
+             else { // Pending
+                 actionButtonsHTML = `
+                    <button class="prompter-frame-button prompter-generate-btn" data-index="${index}">
+                        <svg class="magic-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                           <path d="M12 2 L14.5 9.5 L22 12 L14.5 14.5 L12 22 L9.5 14.5 L2 12 L9.5 9.5 Z"/>
+                           <path d="M12 8 L13 11 L16 12 L13 13 L12 16 L11 13 L8 12 L11 11 Z" fill="currentColor" stroke-width="1"/>
+                        </svg>
+                        <span>Generate Frame</span>
+                    </button>`;
+             }
+             actionsContainer.innerHTML = actionButtonsHTML;
+        }
+
+        // Re-attach listeners for this specific frame
+        this.attachFrameEventListeners(frameElement);
+
+         // If generating, start the placeholder animation
+         if (frame.status === 'generating') {
+            this.updateGeneratingAnimation(index);
+        }
+    }
+    // --- END ADDED ---
+
+    // --- NEW METHOD: Show Image Download UI ---
+    showImageDownloadUI() {
+        const completedFrames = this.currentPlan?.frames.filter(f => f.status === 'complete' && f.imageUrl) || [];
+        if (completedFrames.length === 0) {
+            this.showFrameActionToast("No completed frames available to download.", "info");
+            return;
+        }
+
+        const planMessage = document.querySelector('.prompter-frames-container')?.closest('.prompter-message');
+        if (!planMessage) return;
+
+        let downloadUIContainer = planMessage.querySelector('.prompter-download-ui-container');
+        if (!downloadUIContainer) {
+            console.error("Download UI container not found!"); // Should have been added in showAnimationPlan
+            return;
+        }
+
+        // --- MODIFIED: Enhanced HTML structure for grid layout and better styling ---
+        // Build frame selection list items for the grid
+        const frameItemsHTML = completedFrames.map(frame => `
+            <div class="prompter-download-item" data-index="${frame.index}">
+                <input type="checkbox" id="download-frame-${frame.index}" value="${frame.index}" class="prompter-download-checkbox">
+                <label for="download-frame-${frame.index}" class="prompter-download-label">
+                    <img src="${frame.imageUrl}" alt="Frame ${frame.index + 1} thumbnail">
+                    <span class="frame-index-label">Frame ${frame.index + 1}</span>
+                    <div class="checkmark-overlay">
+                        <svg class="checkmark-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg >
+                    </div>
+                </label>
+            </div>
+        `).join('');
+
+        downloadUIContainer.innerHTML = `
+            <div class="prompter-download-ui">
+                <div class="prompter-download-header">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg >
+                    Download Frames
+                </div>
+                <div class="prompter-download-controls">
+                    <button class="prompter-control-button select-all-btn">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg >
+                        Select All
+                    </button>
+                    <button class="prompter-control-button deselect-all-btn">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg >
+                        Deselect All
+                    </button>
+                    <span class="selected-count">0 selected</span>
+                </div>
+                <div class="prompter-download-list">
+                    ${frameItemsHTML}
+                </div>
+                <div class="prompter-download-actions">
+                    <button class="prompter-download-button cancel">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg >
+                        Cancel
+                    </button>
+                    <button class="prompter-download-button download" disabled>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg >
+                        Download Selected
+                    </button>
+                </div>
+            </div>
+        `;
+        // --- END MODIFIED ---
+
+        const uiElement = downloadUIContainer.querySelector('.prompter-download-ui');
+        // --- MODIFIED: Target checkbox inside the item ---
+        const frameCheckboxes = uiElement.querySelectorAll('.prompter-download-checkbox');
+        // --- END MODIFIED ---
+        const selectAllBtn = uiElement.querySelector('.select-all-btn');
+        const deselectAllBtn = uiElement.querySelector('.deselect-all-btn');
+        const selectedCountSpan = uiElement.querySelector('.selected-count');
+        const downloadBtn = uiElement.querySelector('.prompter-download-button.download');
+        const cancelBtn = uiElement.querySelector('.prompter-download-button.cancel');
+
+        const updateSelectionState = () => {
+            // --- MODIFIED: Count checked checkboxes ---
+            const selectedItems = uiElement.querySelectorAll('.prompter-download-checkbox:checked');
+            // --- END MODIFIED ---
+            const count = selectedItems.length;
+            selectedCountSpan.textContent = `${count} selected`;
+            downloadBtn.disabled = count === 0;
+
+            // --- MODIFIED: Update parent item class for visual feedback ---
+            frameCheckboxes.forEach(checkbox => {
+                const itemElement = checkbox.closest('.prompter-download-item');
+                if (itemElement) {
+                    itemElement.classList.toggle('selected', checkbox.checked);
+                }
+            });
+             // --- END MODIFIED ---
+        };
+
+        // --- MODIFIED: Add listener to checkboxes ---
+        frameCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', updateSelectionState);
+        });
+        // --- END MODIFIED ---
+
+        selectAllBtn.addEventListener('click', () => {
+            // --- MODIFIED: Check checkboxes ---
+            frameCheckboxes.forEach(checkbox => checkbox.checked = true);
+            // --- END MODIFIED ---
+            updateSelectionState();
+        });
+
+        deselectAllBtn.addEventListener('click', () => {
+            // --- MODIFIED: Uncheck checkboxes ---
+            frameCheckboxes.forEach(checkbox => checkbox.checked = false);
+            // --- END MODIFIED ---
+            updateSelectionState();
+        });
+
+        cancelBtn.addEventListener('click', () => {
+            uiElement.classList.remove('active'); // Trigger exit animation
+            setTimeout(() => downloadUIContainer.innerHTML = '', 300); // Remove after animation
+        });
+
+        downloadBtn.addEventListener('click', () => {
+            // --- MODIFIED: Get values from checked checkboxes ---
+            const selectedIndices = Array.from(uiElement.querySelectorAll('.prompter-download-checkbox:checked'))
+                                       .map(input => parseInt(input.value));
+            // --- END MODIFIED ---
+            this.startImageDownload(selectedIndices, downloadBtn);
+        });
+
+        // Initial state update
+        updateSelectionState();
+        // Add class to trigger entry animation
+        requestAnimationFrame(() => {
+            uiElement.classList.add('active');
+        });
+        uiElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    // --- NEW METHOD: Start Image Download ---
+    async startImageDownload(indices, downloadButton) {
+        if (!indices || indices.length === 0) return;
+
+        const originalButtonHTML = downloadButton.innerHTML; // Store original content
+        downloadButton.disabled = true;
+        // --- MODIFIED: Use CSS spinner class ---
+        downloadButton.innerHTML = `
+            <div class="button-spinner"></div>
+            Downloading... (0/${indices.length})
+        `;
+        // --- END MODIFIED ---
+
+        let downloadedCount = 0;
+        const totalCount = indices.length;
+        const downloadDelay = 300; // ms delay between triggering downloads
+
+        for (const index of indices) {
+            const frame = this.currentPlan.frames[index];
+            if (frame && frame.imageUrl) {
+                try {
+                    // Create a temporary link to trigger download
+                    const link = document.createElement('a');
+                    link.href = frame.imageUrl;
+                    // Suggest a filename (browsers might override)
+                    const filename = `frame_${String(index + 1).padStart(2, '0')}.png`; // Assuming PNG, adjust if needed
+                    link.download = filename;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+
+                    downloadedCount++;
+                    // --- MODIFIED: Update loading text ---
+                    downloadButton.innerHTML = `
+                        <div class="button-spinner"></div>
+                        Downloading... (${downloadedCount}/${totalCount})
+                    `;
+                    // --- END MODIFIED ---
+
+                    // Wait a bit before triggering the next download
+                    await new Promise(resolve => setTimeout(resolve, downloadDelay));
+
+                } catch (error) {
+                    console.error(`Failed to trigger download for frame ${index + 1}:`, error);
+                    this.showFrameActionToast(`Error downloading frame ${index + 1}`, 'error');
+                    // Continue with the next frame even if one fails
+                }
+            }
+        }
+
+        // Restore button after downloads are triggered
+        downloadButton.innerHTML = originalButtonHTML; // Restore original content
+        downloadButton.disabled = indices.length === 0; // Re-enable based on selection state
+        this.showFrameActionToast(`${downloadedCount} image(s) download initiated.`, 'info');
+
+        // Optionally close the UI after download
+        const uiElement = downloadButton.closest('.prompter-download-ui');
+        if (uiElement) {
+            uiElement.classList.remove('active');
+            setTimeout(() => {
+                 if (uiElement.parentElement) {
+                    uiElement.parentElement.innerHTML = '';
+                 }
+            }, 300);
+        }
     }
 }
 
