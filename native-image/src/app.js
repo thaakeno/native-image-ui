@@ -85,6 +85,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize animation prompter toggle
     const prompterToggle = document.getElementById('prompter-toggle');
     if (prompterToggle) {
+        // Get the saved setting from localStorage or default to false
         const prompterEnabled = localStorage.getItem('prompterEnabled') === 'true';
         prompterToggle.checked = prompterEnabled;
         
@@ -99,7 +100,77 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+    
+    // Initialize prompter onboarding button with enhanced feedback
+    const prompterOnboardingBtn = document.getElementById('show-prompter-onboarding');
+    if (prompterOnboardingBtn) {
+        // Add visual feedback with button ripple effect
+        prompterOnboardingBtn.addEventListener('mousedown', function(e) {
+            const ripple = document.createElement('span');
+            ripple.classList.add('button-ripple');
+            this.appendChild(ripple);
+            
+            const rect = this.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            ripple.style.left = `${x}px`;
+            ripple.style.top = `${y}px`;
+            
+            ripple.classList.add('animate');
+            
+            // Clean up ripple element after animation
+            setTimeout(() => {
+                ripple.remove();
+            }, 600);
+        });
+        
+        // Click handler to launch onboarding
+        prompterOnboardingBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            console.log("Restart onboarding button clicked.");
 
+            // 1. Close the settings modal if it's open
+            if (settingsModal && settingsModal.style.display !== 'none') {
+                // Use your existing function or just hide it directly
+                // closeSettingsModal(); // Or...
+                settingsModal.style.display = 'none';
+                console.log("Settings modal closed.");
+            }
+
+            // 2. Check if the onboarding instance exists and call restart
+            if (window.prompterOnboardingInstance && typeof window.prompterOnboardingInstance.restartOnboarding === 'function') {
+                // {{ edit }} Removed any checks for "feature availability" here. Just restart.
+                console.log("Calling restartOnboarding...");
+                // Add a tiny delay to ensure modal is visually closed before tour starts
+                setTimeout(() => {
+                     window.prompterOnboardingInstance.restartOnboarding();
+                }, 50); // Small delay
+            } else {
+                // This is the only case where it might truly be "unavailable"
+                console.error("Onboarding instance or restart method not found!");
+                // Optionally, show a *real* error message here if the instance is missing
+                // showUserMessage("Error: Could not restart the onboarding tour.", "error");
+            }
+        });
+    } else {
+        console.warn("Button #show-prompter-onboarding not found.");
+    }
+    
+    // Add modal closing animation
+    const style = document.createElement('style');
+    style.textContent = `
+        .modal-closing {
+            animation: modalFadeOut 0.25s ease-out forwards;
+        }
+        
+        @keyframes modalFadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+    `;
+    document.head.appendChild(style);
+    
     // Initialize theme selection
     const themeSelector = document.getElementById('theme-selector');
     const currentTheme = config.tactileMode ? 'onyx' : 'mint';

@@ -2759,4 +2759,86 @@ input:checked + .slider:before {
     opacity: 1;
 }
 
+/* Add styles for the onboarding button in settings */
+.settings-action-button {
+    display: flex;
+    align-items: center;
+    padding: 12px 18px;
+    gap: 10px;
+    background: linear-gradient(135deg, 
+        rgba(var(--primary-color-rgb), 0.15),
+        rgba(var(--primary-color-rgb), 0.25));
+    color: var(--text-normal);
+    border: none;
+    border-radius: 10px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.19, 1, 0.22, 1);
+    margin-top: 5px;
+    width: 100%;
+    text-align: left;
+    position: relative;
+    overflow: hidden;
+}
+
+.settings-action-button:hover {
+    background: linear-gradient(135deg, 
+        rgba(var(--primary-color-rgb), 0.2),
+        rgba(var(--primary-color-rgb), 0.3));
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(var(--primary-color-rgb), 0.15);
+}
+
+.settings-action-button svg {
+    width: 16px;
+    height: 16px;
+    color: var(--primary-color);
+    transition: transform 0.3s ease;
+}
+
+.settings-action-button:hover svg {
+    transform: rotate(15deg);
+}
+
+/* Button ripple effect */
+.settings-action-button::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 5px;
+    height: 5px;
+    background: rgba(255, 255, 255, 0.3);
+    opacity: 0;
+    border-radius: 100%;
+    transform: scale(1, 1) translate(-50%, -50%);
+    transform-origin: 50% 50%;
+}
+
+.settings-action-button:focus:not(:active)::after {
+    animation: actionButtonRipple 0.8s ease-out;
+}
+
+@keyframes actionButtonRipple {
+    0% { transform: scale(0, 0); opacity: 0.3; }
+    20% { transform: scale(25, 25); opacity: 0.3; }
+    100% { transform: scale(40, 40); opacity: 0; }
+}
+
+/* Light theme adjustments */
+[data-theme="light"] .settings-action-button {
+    background: linear-gradient(135deg, 
+        rgba(var(--primary-color-rgb), 0.1),
+        rgba(var(--primary-color-rgb), 0.2));
+    color: #2c3e50;
+}
+
+[data-theme="light"] .settings-action-button:hover {
+    background: linear-gradient(135deg, 
+        rgba(var(--primary-color-rgb), 0.15),
+        rgba(var(--primary-color-rgb), 0.25));
+    box-shadow: 0 4px 12px rgba(var(--primary-color-rgb), 0.1);
+}
+
 

@@ -1,0 +1,695 @@
+/* Animation Prompter Onboarding Styles (v12 - Tactile Theme Integration) */
+
+/* --- Variables (Optional, for easier theming) --- */
+:root {
+    --onboarding-bg-primary: var(--background-primary);
+    --onboarding-bg-secondary: var(--background-secondary);
+    --onboarding-border-color: var(--background-modifier-border);
+    --onboarding-text-normal: var(--text-normal);
+    --onboarding-text-muted: var(--text-muted);
+    --onboarding-text-accent: var(--text-accent);
+    --onboarding-primary-color: var(--primary-color);
+    --onboarding-primary-hover: var(--primary-hover);
+    --onboarding-primary-rgb: var(--primary-color-rgb);
+}
+
+/* --- Overlay & Spotlight Mask (Now Invisible) --- */
+.onboarding-overlay {
+    position: fixed;
+    inset: 0;
+    /* {{ edit }} Make overlay transparent - NO DIMMING */
+    background-color: transparent;
+    backdrop-filter: none; /* {{ edit }} Remove blur */
+    z-index: 10000;
+    opacity: 1; /* {{ edit }} Keep it present, but invisible */
+    pointer-events: none !important;
+    /* No transition needed for opacity if always transparent */
+    transition: none;
+    will-change: auto; /* No longer animating opacity */
+}
+
+.onboarding-overlay.active {
+    opacity: 1; /* Still technically active, just invisible */
+}
+
+/* Remove SVG Masking Styles - No longer needed for highlight */
+.onboarding-overlay.spotlight-active {
+    /* {{ edit }} Remove mask/webkit-mask transitions and properties */
+    transition: none;
+    will-change: auto;
+    mask: none !important;
+    -webkit-mask: none !important;
+}
+
+
+/* --- Highlight Target (Animated Outline) --- */
+.onboarding-highlight-target {
+    position: relative;
+    z-index: 10001; /* Keep above invisible overlay */
+    outline-style: solid;
+    outline-color: var(--onboarding-primary-color);
+    outline-width: 3px; /* Adjust thickness as needed */
+    outline-offset: 5px; /* Initial gap */
+    animation: pulseOutlineV11 1.8s infinite ease-in-out;
+    transition: none; /* Let animation handle changes */
+}
+
+/* {{ add }} Add override for absolute positioned close buttons */
+.onboarding-highlight-target.close-button, /* Target specifically if it has class 'close-button' */
+#settings-modal .modal-content .close-button.onboarding-highlight-target /* More specific selector */ {
+    position: absolute !important; /* FORCE it to stay absolute */
+}
+
+/* {{ edit }} Remove old pulseTargetV10 keyframes */
+/* @keyframes pulseTargetV10 { ... } */
+
+/* {{ edit }} New keyframes for pulsing outline offset */
+@keyframes pulseOutlineV11 {
+    0%, 100% {
+        outline-offset: 5px;
+        outline-color: rgba(var(--onboarding-primary-rgb), 0.8); /* Slightly transparent */
+    }
+    50% {
+        outline-offset: 10px; /* Pulse outwards */
+        outline-color: rgba(var(--onboarding-primary-rgb), 1); /* Fully opaque */
+    }
+}
+
+/* --- Tooltip Container --- */
+.onboarding-container {
+    position: fixed;
+    z-index: 10002; /* Above highlight */
+    max-width: 430px; /* Slightly wider for balance */
+    width: calc(100% - 30px); /* Adjust padding */
+    background-color: var(--background-secondary, #2f3136) !important; /* Force solid background */
+    color: var(--onboarding-text-normal);
+    border-radius: 20px;
+    box-shadow: 0 18px 55px rgba(0, 0, 0, 0.28), 0 12px 25px rgba(0, 0, 0, 0.18); /* Default shadow */
+    border: 1px solid var(--onboarding-border-color); /* Default border */
+    opacity: 0;
+    /* ** THE SMOOTH TRANSITION ** */
+    transform: translateY(30px) scale(0.95); /* Start slightly lower/smaller */
+    transition: opacity 0.5s cubic-bezier(0.645, 0.045, 0.355, 1), /* Smooooth opacity */
+                transform 0.6s cubic-bezier(0.645, 0.045, 0.355, 1), /* Smooooth transform */
+                top 0.5s cubic-bezier(0.645, 0.045, 0.355, 1), /* Smooooth position */
+                left 0.5s cubic-bezier(0.645, 0.045, 0.355, 1); /* Smooooth position */
+    will-change: opacity, transform, top, left;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    /* Add a very subtle texture/gradient? (Optional) */
+    /* background-image: linear-gradient(rgba(255,255,255,0.02), rgba(0,0,0,0.02)); */
+    /* background-color: var(--background-secondary, #2f3136) !important; */
+}
+
+.onboarding-container.visible {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+}
+
+/* --- Progress Bar --- */
+.onboarding-progress-bar-container {
+    padding: 14px 25px 12px 25px;
+    background-color: var(--onboarding-bg-primary); /* Default */
+    border-bottom: 1px solid var(--onboarding-border-color); /* Default */
+    border-top-left-radius: 20px; /* Match container */
+    border-top-right-radius: 20px; /* Match container */
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+}
+
+.onboarding-progress-bar-container::before {
+    content: "Step " attr(data-step-current) " / " attr(data-step-total); /* Changed "of" to "/" */
+    font-size: 0.9rem;
+    font-weight: 600; /* Keep slightly bold */
+    color: var(--onboarding-text-muted);
+    white-space: nowrap;
+}
+
+.onboarding-progress-bar {
+    flex-grow: 1;
+    height: 10px; /* Slightly thinner bar */
+    appearance: none;
+    -webkit-appearance: none;
+    border: none;
+    border-radius: 5px; /* Match height */
+    overflow: hidden;
+    background-color: rgba(var(--onboarding-border-color), 0.6); /* Default */
+}
+
+.onboarding-progress-bar::-webkit-progress-value {
+    /* Default gradient */
+    background: linear-gradient(90deg, var(--onboarding-primary-color) 0%, var(--onboarding-primary-hover) 65%, #a855f7 100%);
+    border-radius: 5px;
+    transition: width 0.7s cubic-bezier(0.645, 0.045, 0.355, 1); /* Smoother width transition */
+    /* NO SHIMMER: box-shadow removed */
+}
+.onboarding-progress-bar::-moz-progress-bar {
+     /* Default gradient */
+    background: linear-gradient(90deg, var(--onboarding-primary-color) 0%, var(--onboarding-primary-hover) 65%, #a855f7 100%);
+    border-radius: 5px;
+    transition: width 0.7s cubic-bezier(0.645, 0.045, 0.355, 1); /* Smoother width transition */
+     /* NO SHIMMER: box-shadow removed */
+}
+.onboarding-progress-bar::-webkit-progress-bar {
+    background-color: rgba(var(--onboarding-border-color), 0.6);
+    border-radius: 5px;
+}
+
+/* --- Step Content Area --- */
+.onboarding-step {
+    padding: 25px 30px 30px 30px; /* Adjusted padding slightly */
+    flex-grow: 1;
+    background-color: var(--background-secondary, #2f3136) !important; /* Force solid background */
+    /* {{ remove }} Remove the forced background color override */
+    /* background-color: var(--background-secondary, #2f3136) !important; */
+}
+
+/* Header */
+.onboarding-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 22px;
+    gap: 16px; /* Slightly adjusted gap */
+}
+
+.onboarding-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 50px; /* Standardized size */
+    height: 50px;
+    border-radius: 15px;
+    /* Default gradient/shadow */
+    background: linear-gradient(145deg, var(--onboarding-primary-hover), var(--onboarding-primary-color));
+    box-shadow: 0 6px 14px rgba(var(--onboarding-primary-rgb), 0.35);
+    color: white;
+    flex-shrink: 0;
+    position: relative;
+    overflow: hidden;
+}
+/* Add subtle shine effect */
+.onboarding-icon::before {
+    content: '';
+    position: absolute;
+    top: -20%; left: -50%;
+    width: 100%; height: 100%;
+    background: linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0) 100%);
+    transform: rotate(25deg);
+    opacity: 0.8;
+}
+.onboarding-icon svg {
+    width: 26px; /* Standardized size */
+    height: 26px;
+    /* Smoother pulse animation */
+    animation: iconPulseV10 3.5s infinite cubic-bezier(0.445, 0.05, 0.55, 0.95); /* Updated timing function */
+    filter: drop-shadow(0 1px 2px rgba(0,0,0,0.25));
+    position: relative; /* Ensure icon is above pseudo-element */
+    z-index: 1;
+    stroke: white !important; /* {{ edit }} Force stroke color to white */
+    /* fill: rgba(255, 255, 255, 0.1); */ /* Optional: subtle fill */
+}
+@keyframes iconPulseV10 {
+    0%, 100% { transform: scale(1); filter: drop-shadow(0 1px 2px rgba(0,0,0,0.25)); opacity: 0.9; }
+    50% { transform: scale(1.06); filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3)); opacity: 1; } /* Adjusted scale/shadow/opacity */
+}
+
+.onboarding-header h2 {
+    margin: 0;
+    font-size: 1.55rem; /* Slightly adjusted */
+    font-weight: 700; /* Keep bold */
+    line-height: 1.35;
+    color: var(--text-title-h2); /* Use theme variable */
+    /* Subtle text shadow for depth */
+    text-shadow: 0 1px 2px rgba(0,0,0,0.15);
+}
+
+/* Text Content */
+.onboarding-step p {
+    margin: 16px 0 20px 0; /* Adjusted spacing */
+    line-height: 1.75; /* Standard line height */
+    color: var(--onboarding-text-normal); /* Use variable */
+    font-size: 1rem; /* Standard font size */
+}
+.onboarding-step p:last-of-type { margin-bottom: 0; }
+.onboarding-step strong {
+    color: var(--onboarding-text-accent); /* Use variable */
+    font-weight: 600;
+    /* Remove gradient, use solid color for better readability */
+    /* background: linear-gradient(90deg, var(--text-accent), var(--primary-hover)); */
+    /* background-clip: text; */
+    /* -webkit-background-clip: text; */
+    /* color: transparent; */
+    padding: 0;
+    /* background-color: rgba(var(--onboarding-primary-rgb), 0.1); */
+    /* border-radius: 3px; */
+}
+
+/* Inline Icons in Text */
+.onboarding-step svg.inline-icon {
+    display: inline-block;
+    vertical-align: -0.25em; /* Re-tune alignment */
+    width: 1.25em; /* Standardized */
+    height: 1.25em;
+    margin: 0 0.1em; /* Adjust spacing */
+    color: var(--onboarding-text-accent); /* Use accent color */
+    opacity: 0.9;
+    transition: transform 0.2s ease-out;
+}
+/* Add subtle hover effect to inline icons */
+.onboarding-step p a:hover svg.inline-icon, /* If icon is inside a link */
+.onboarding-step p strong:hover svg.inline-icon, /* If icon is near strong text */
+.onboarding-step p svg.inline-icon:hover { /* Direct hover (might not work well) */
+    transform: scale(1.15) rotate(5deg);
+    opacity: 1;
+    color: var(--onboarding-primary-hover);
+}
+
+
+/* --- Footer Area --- */
+.onboarding-footer {
+    padding: 20px 30px; /* Adjusted padding */
+    background-color: var(--onboarding-bg-primary); /* Default */
+    border-top: 1px solid var(--onboarding-border-color); /* Default */
+    display: flex;
+    justify-content: flex-end; /* Keep alignment */
+    gap: 16px; /* More gap */
+    border-bottom-left-radius: 20px; /* Match container */
+    border-bottom-right-radius: 20px; /* Match container */
+}
+
+/* Button Styles */
+.onboarding-button {
+    border: none;
+    border-radius: 10px; /* Slightly less rounded button */
+    padding: 12px 22px; /* Adjusted padding */
+    font-weight: 600;
+    font-size: 1rem; /* Standard size */
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px; /* Standard gap */
+    text-shadow: 0 1px 1px rgba(0,0,0,0.1); /* Subtle shadow */
+}
+
+/* Primary "Show me" button */
+.onboarding-button.primary.onboarding-show-me {
+    background: linear-gradient(135deg, var(--onboarding-primary-color), var(--onboarding-primary-hover));
+    color: white;
+    box-shadow: 0 5px 12px rgba(var(--onboarding-primary-rgb), 0.25), inset 0 1px 1px rgba(255,255,255,0.08);
+}
+.onboarding-button.primary.onboarding-show-me:hover:not(:disabled) {
+    transform: translateY(-2px); /* Standard lift */
+    box-shadow: 0 7px 16px rgba(var(--onboarding-primary-rgb), 0.3);
+}
+.onboarding-button.primary.onboarding-show-me:active:not(:disabled) {
+    transform: translateY(0px);
+    box-shadow: 0 3px 8px rgba(var(--onboarding-primary-rgb), 0.25),
+                inset 0 1px 2px rgba(0,0,0,0.1);
+}
+.onboarding-button.primary.onboarding-show-me:disabled {
+    opacity: 0.7;
+    cursor: default;
+    box-shadow: 0 2px 5px rgba(var(--onboarding-primary-rgb), 0.2);
+}
+.onboarding-button.primary.onboarding-show-me svg {
+    width: 18px; /* Standard icon size */
+    height: 18px;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* Match button transition */
+}
+.onboarding-button.primary.onboarding-show-me:hover:not(:disabled) svg {
+    transform: rotate(6deg) scale(1.1); /* Subtle effect */
+}
+
+/* Hide other buttons */
+.onboarding-button:not(.onboarding-show-me) {
+    display: none !important;
+}
+
+/* Ripple effect (keep as is) */
+.onboarding-button::after {
+    content: ''; position: absolute; top: 50%; left: 50%;
+    width: 5px; height: 5px; background: rgba(255, 255, 255, 0.4);
+    opacity: 0; border-radius: 100%;
+    transform: scale(1, 1) translate(-50%, -50%); transform-origin: 50% 50%;
+}
+.onboarding-button:focus:not(:active)::after { animation: ripple 0.8s ease-out; }
+@keyframes ripple {
+    0% { transform: scale(0, 0); opacity: 0.4; }
+    20% { transform: scale(30, 30); opacity: 0.4; }
+    100% { transform: scale(60, 60); opacity: 0; }
+}
+
+/* Close Button */
+.onboarding-close {
+    position: absolute;
+    top: 15px; /* Adjusted position */
+    right: 15px;
+    width: 34px; /* Standard size */
+    height: 34px;
+    background: transparent; /* Make transparent */
+    border: 1px solid transparent; /* Add border for hover */
+    border-radius: 50%;
+    color: var(--onboarding-text-muted); /* Use variable */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 10003; /* Highest */
+}
+.onboarding-close svg {
+    width: 16px; /* Standard size */
+    height: 16px;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* Match button transition */
+}
+.onboarding-close:hover {
+    background: rgba(var(--onboarding-border-color), 0.4); /* Show bg on hover */
+    color: var(--onboarding-text-normal);
+    transform: scale(1.08) rotate(15deg); /* Add slight rotation */
+}
+.onboarding-close:hover svg {
+    transform: rotate(90deg); /* Keep icon rotation */
+}
+
+
+/* Light theme adjustments */
+[data-theme="light"] .onboarding-overlay {
+     background-color: rgba(248, 250, 252, 0.9); /* Adjust alpha */
+     backdrop-filter: blur(6px); /* Less blur maybe */
+}
+[data-theme="light"] .onboarding-container {
+    --onboarding-bg-primary: #f8f9fc; /* Light theme primary bg */
+    --onboarding-bg-secondary: #ffffff; /* Light theme secondary bg */
+    --onboarding-border-color: #e9edf1; /* Light theme border */
+    --onboarding-text-normal: #4a586e; /* Light theme text */
+    --onboarding-text-muted: #7b8a9e; /* Light theme muted */
+    --onboarding-text-accent: var(--primary-color); /* Keep primary for accent */
+
+    background-color: var(--background-secondary, #ffffff) !important; /* Keep solid light bg */
+    border-color: var(--onboarding-border-color);
+    box-shadow: 0 12px 45px rgba(80, 90, 110, 0.12), 0 8px 25px rgba(80, 90, 110, 0.08); /* Softer shadow */
+}
+/* Apply variables to relevant elements for light theme */
+[data-theme="light"] .onboarding-progress-bar-container {
+    background-color: var(--onboarding-bg-primary);
+    border-bottom-color: var(--onboarding-border-color);
+}
+[data-theme="light"] .onboarding-progress-bar-container::before { color: var(--onboarding-text-muted); }
+[data-theme="light"] .onboarding-progress-bar { background-color: rgba(var(--onboarding-border-color), 0.8); }
+[data-theme="light"] .onboarding-step { background-color: var(--background-secondary, #ffffff) !important; }
+[data-theme="light"] .onboarding-header h2 { color: #2c3e50; } /* Darker title */
+[data-theme="light"] .onboarding-step p { color: var(--onboarding-text-normal); }
+[data-theme="light"] .onboarding-step strong { color: var(--onboarding-text-accent); } /* Keep accent color */
+[data-theme="light"] .onboarding-step svg.inline-icon { color: var(--onboarding-text-accent); }
+[data-theme="light"] .onboarding-footer {
+    background-color: var(--onboarding-bg-primary);
+    border-top-color: var(--onboarding-border-color);
+}
+[data-theme="light"] .onboarding-close { color: var(--onboarding-text-muted); }
+[data-theme="light"] .onboarding-close:hover {
+    background: rgba(220, 225, 230, 0.7);
+    color: #3a4a5f;
+}
+
+/* Mobile responsive improvements */
+@media (max-width: 768px) {
+    .onboarding-container {
+        max-width: 92%;
+        width: 92%;
+        border-radius: 16px; /* Slightly less rounded on mobile */
+    }
+    .onboarding-step { padding: 20px 25px 25px 25px; } /* Less padding */
+    .onboarding-header { margin-bottom: 20px; gap: 12px; }
+    .onboarding-header h2 { font-size: 1.4rem; }
+    .onboarding-icon { width: 44px; height: 44px; border-radius: 12px;}
+    .onboarding-icon svg { width: 22px; height: 22px; }
+    .onboarding-step p { font-size: 0.95rem; line-height: 1.7; }
+    .onboarding-footer { padding: 18px 25px; }
+    .onboarding-button { padding: 11px 20px; font-size: 0.95rem; }
+    .onboarding-close { top: 12px; right: 12px; width: 32px; height: 32px; }
+}
+
+/* Reduce motion preference */
+@media (prefers-reduced-motion: reduce) {
+    .onboarding-overlay,
+    .onboarding-highlight-target,
+    .onboarding-container,
+    .onboarding-button,
+    .onboarding-icon,
+    .onboarding-icon svg,
+    .onboarding-icon::before,
+    .onboarding-progress-bar::-webkit-progress-value,
+    .onboarding-progress-bar::-moz-progress-bar,
+    .onboarding-button::after,
+    .onboarding-close,
+    .onboarding-close svg,
+    .onboarding-step svg.inline-icon {
+        animation: none !important;
+        transition: none !important;
+    }
+}
+
+/* Style for the simulated click (keep animation) */
+.onboarding-auto-click {
+    position: relative;
+    z-index: 10001;
+    animation: onboardingClickPulse 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes onboardingClickPulse {
+    0% { box-shadow: 0 0 0 0 rgba(var(--onboarding-primary-rgb), 0.7); }
+    50% { box-shadow: 0 0 0 25px rgba(var(--onboarding-primary-rgb), 0); }
+    100% { box-shadow: 0 0 0 0 rgba(var(--onboarding-primary-rgb), 0); }
+}
+
+/* ============================================= */
+/* === TACTILE THEME OVERRIDES START HERE === */
+/* ============================================= */
+
+[data-tactile="true"] .onboarding-container {
+    /* {{ edit }} Remove !important and add higher specificity to override */
+    background-color: transparent !important; /* Clear solid bg first */
+    background: linear-gradient(145deg,
+        rgba(var(--background-primary-rgb, 26, 26, 29), 1) 0%,
+        rgba(var(--background-secondary-rgb, 36, 37, 42), 1) 100%
+    ) !important; /* Force gradient */
+    /* {{ edit }} Apply tactile shadow */
+    box-shadow: var(--tactile-shadow-out);
+    /* {{ edit }} Apply tactile border */
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 24px; /* Match tactile components */
+}
+
+[data-tactile="true"] .onboarding-progress-bar-container {
+    /* {{ edit }} Match tactile header/footer areas */
+    background: linear-gradient(to bottom, rgba(var(--background-secondary-rgb, 36, 37, 42), 0.7), rgba(var(--background-primary-rgb, 26, 26, 29), 0.7));
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.03), inset 0 -1px 1px rgba(0,0,0, 0.1);
+    border-top-left-radius: 24px; /* Match container */
+    border-top-right-radius: 24px;
+}
+
+[data-tactile="true"] .onboarding-progress-bar {
+    /* {{ edit }} Tactile track styling */
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: 6px;
+    box-shadow: inset 1px 1px 3px rgba(0, 0, 0, 0.4),
+                inset -1px -1px 2px rgba(255, 255, 255, 0.05);
+    height: 12px; /* Slightly thicker for tactile feel */
+}
+
+[data-tactile="true"] .onboarding-progress-bar::-webkit-progress-value,
+[data-tactile="true"] .onboarding-progress-bar::-moz-progress-bar {
+    /* {{ edit }} Tactile progress gradient */
+    background: linear-gradient(90deg, var(--primary-color) 0%, #a855f7 100%); /* Purple hint, simpler gradient */
+    border-radius: 6px;
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.1),
+                0 0 8px rgba(var(--primary-color-rgb), 0.5); /* Subtle glow */
+}
+[data-tactile="true"] .onboarding-progress-bar::-webkit-progress-bar {
+     /* {{ edit }} Ensure track styles match */
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: 6px;
+    box-shadow: inset 1px 1px 3px rgba(0, 0, 0, 0.4),
+                inset -1px -1px 2px rgba(255, 255, 255, 0.05);
+}
+
+
+[data-tactile="true"] .onboarding-step {
+     /* {{ edit }} Use container background, no separate needed */
+    background-color: transparent !important; /* Force transparent */
+    background: transparent !important;
+}
+
+[data-tactile="true"] .onboarding-icon {
+    /* {{ edit }} Apply tactile shadow to icon container */
+    box-shadow: var(--tactile-shadow-out);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+[data-tactile="true"] .onboarding-icon:hover { /* Add hover effect */
+     box-shadow: var(--tactile-shadow-hover);
+     transform: translateY(-2px);
+}
+
+[data-tactile="true"] .onboarding-footer {
+    /* {{ edit }} Match tactile header/footer areas */
+    background: linear-gradient(to top, rgba(var(--background-secondary-rgb, 36, 37, 42), 0.7), rgba(var(--background-primary-rgb, 26, 26, 29), 0.7));
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    box-shadow: inset 0 -1px 1px rgba(255, 255, 255, 0.03), inset 0 1px 1px rgba(0,0,0, 0.1);
+    border-bottom-left-radius: 24px; /* Match container */
+    border-bottom-right-radius: 24px;
+}
+
+/* Tactile Buttons */
+[data-tactile="true"] .onboarding-button {
+    /* {{ edit }} Base tactile button style */
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    background: var(--background-primary);
+    box-shadow: var(--tactile-shadow-out);
+    color: var(--text-muted);
+    text-shadow: none; /* Remove default text shadow */
+}
+[data-tactile="true"] .onboarding-button:hover:not(:disabled) {
+    /* {{ edit }} Tactile hover */
+    box-shadow: var(--tactile-shadow-hover);
+    transform: translateY(-2px);
+    color: var(--text-accent); /* Use accent for hover text */
+    background: var(--background-secondary); /* Slight bg change */
+}
+[data-tactile="true"] .onboarding-button:active:not(:disabled) {
+    /* {{ edit }} Tactile active/press */
+    box-shadow: var(--tactile-shadow-in);
+    transform: translateY(1px);
+}
+[data-tactile="true"] .onboarding-button.primary.onboarding-show-me {
+    /* {{ edit }} Primary tactile specific */
+    color: var(--text-accent); /* Primary button text uses accent */
+    background: linear-gradient(145deg, var(--background-secondary), var(--background-primary));
+}
+[data-tactile="true"] .onboarding-button.primary.onboarding-show-me:hover:not(:disabled) {
+    color: var(--primary-hover); /* Brighter hover text */
+}
+[data-tactile="true"] .onboarding-button:disabled {
+    /* {{ edit }} Tactile disabled */
+    box-shadow: var(--tactile-shadow-in); /* Looks pressed in */
+    opacity: 0.6;
+    cursor: default;
+}
+
+[data-tactile="true"] .onboarding-close {
+    /* {{ edit }} Tactile close button */
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    background: var(--background-primary);
+    box-shadow: var(--tactile-shadow-out);
+    color: var(--text-muted);
+}
+[data-tactile="true"] .onboarding-close:hover {
+    /* {{ edit }} Tactile close hover */
+    box-shadow: var(--tactile-shadow-hover);
+    transform: translateY(-2px) rotate(15deg); /* Keep rotation */
+    color: var(--text-accent);
+    background: var(--background-secondary);
+}
+[data-tactile="true"] .onboarding-close:active {
+     /* {{ edit }} Tactile close active/press */
+    box-shadow: var(--tactile-shadow-in);
+    transform: translateY(1px) rotate(15deg);
+}
+
+/* =========================================== */
+/* === LIGHT MODE TACTILE OVERRIDES === */
+/* =========================================== */
+
+[data-theme="light"][data-tactile="true"] .onboarding-container {
+    /* {{ edit }} Subtle gradient for light tactile */
+    background-color: transparent !important; /* Clear the light solid bg first */
+    background: linear-gradient(145deg, #ffffff 0%, #e9edf1 100%) !important; /* Force gradient */
+    /* {{ edit }} Light tactile shadow */
+    box-shadow: var(--tactile-shadow-out);
+    /* {{ edit }} Light tactile border */
+    border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="light"][data-tactile="true"] .onboarding-progress-bar-container {
+    /* {{ edit }} Light tactile header/footer */
+    background: linear-gradient(to bottom, #ffffff, #f0f3f6);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.7), inset 0 -1px 1px rgba(0,0,0, 0.02);
+}
+
+[data-theme="light"][data-tactile="true"] .onboarding-progress-bar {
+    /* {{ edit }} Light tactile track */
+    background-color: rgba(0, 0, 0, 0.05);
+    box-shadow: inset 1px 1px 3px rgba(0, 0, 0, 0.1),
+                inset -1px -1px 2px rgba(255, 255, 255, 0.7);
+}
+
+[data-theme="light"][data-tactile="true"] .onboarding-progress-bar::-webkit-progress-value,
+[data-theme="light"][data-tactile="true"] .onboarding-progress-bar::-moz-progress-bar {
+    /* {{ edit }} Light tactile progress */
+     background: linear-gradient(90deg, var(--primary-color) 0%, #a855f7 100%);
+     box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.4),
+                 0 0 8px rgba(var(--primary-color-rgb), 0.3);
+}
+[data-theme="light"][data-tactile="true"] .onboarding-progress-bar::-webkit-progress-bar {
+    /* {{ edit }} Ensure track styles match */
+    background-color: rgba(0, 0, 0, 0.05);
+    box-shadow: inset 1px 1px 3px rgba(0, 0, 0, 0.1),
+                inset -1px -1px 2px rgba(255, 255, 255, 0.7);
+}
+
+[data-theme="light"][data-tactile="true"] .onboarding-icon {
+    /* {{ edit }} Light tactile icon shadow */
+    box-shadow: var(--tactile-shadow-out);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="light"][data-tactile="true"] .onboarding-footer {
+     /* {{ edit }} Light tactile header/footer */
+    background: linear-gradient(to top, #ffffff, #f0f3f6);
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
+    box-shadow: inset 0 -1px 1px rgba(255, 255, 255, 0.7), inset 0 1px 1px rgba(0,0,0, 0.02);
+}
+
+[data-theme="light"][data-tactile="true"] .onboarding-button {
+    /* {{ edit }} Light tactile button base */
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    background: var(--background-primary);
+    box-shadow: var(--tactile-shadow-out);
+    color: var(--text-secondary); /* Use theme text color */
+}
+[data-theme="light"][data-tactile="true"] .onboarding-button:hover:not(:disabled) {
+    box-shadow: var(--tactile-shadow-hover);
+    color: var(--text-accent);
+    background: var(--background-secondary);
+}
+[data-theme="light"][data-tactile="true"] .onboarding-button:active:not(:disabled) {
+    box-shadow: var(--tactile-shadow-in);
+}
+[data-theme="light"][data-tactile="true"] .onboarding-button.primary.onboarding-show-me {
+     color: var(--text-accent);
+     background: linear-gradient(145deg, #f8f9fc, #e9edf1); /* Light gradient */
+}
+
+[data-theme="light"][data-tactile="true"] .onboarding-close {
+     /* {{ edit }} Light tactile close button */
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    background: var(--background-primary);
+    box-shadow: var(--tactile-shadow-out);
+    color: var(--text-muted);
+}
+[data-theme="light"][data-tactile="true"] .onboarding-close:hover {
+    box-shadow: var(--tactile-shadow-hover);
+    color: var(--text-accent);
+    background: var(--background-secondary);
+}
+
+/* ... existing light theme base overrides ... */
+/* ... existing media queries ... */
+/* ... existing reduce motion query ... */
+/* ... existing onboarding-auto-click styles ... */ 
