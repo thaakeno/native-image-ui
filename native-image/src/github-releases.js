@@ -378,6 +378,14 @@ class GitHubReleases {
         
         // Clear notifications
         this.clearUpdateNotification();
+
+        // Check if user is a first-time visitor and trigger onboarding
+        setTimeout(() => {
+            if (window.prompterOnboarding && window.prompterOnboarding.isFirstTimeUser) {
+                console.log('First-time user detected, starting onboarding after GitHub releases close');
+                window.prompterOnboarding.startOnboarding();
+            }
+        }, 500); // Small delay after panel closes
     }
     
     showUpdateNotification() {

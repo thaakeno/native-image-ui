@@ -4,15 +4,21 @@
  */
 class Prompter {
     constructor() {
-        this.isEnabled = false; // Whether the button is shown
-        this.isActive = false; // Whether the prompter conversation is active
-        this.welcomeMessageShown = false; // Track if welcome message has been shown
+        // Core state
+        this.isActive = localStorage.getItem('prompterActive') === 'true';
+        this.selectedImages = [];
+        this.referenceImages = []; // Initialize array for storing reference images
         this.currentPlan = null;
-        this.isGeneratingImage = false;
         this.isGeneratingAllFrames = false;
-        this.completionMessageShown = false; // Track if completion message has already been shown
-        this.animationIntervals = {}; // Store animation intervals by frame index
-        this.generatedImages = []; // Store generated image URLs
+        
+        // Loading animations state
+        this.animationIntervals = {};
+        this.particleElements = [];
+        this.completionMessageShown = false;
+        
+        // Other states
+        this.isGeneratingImage = false;
+        this.welcomeMessageShown = false;
         this.app = window.app || {};
         
         // Initialize when DOM is loaded
@@ -816,11 +822,15 @@ class Prompter {
     
     // Placeholder implementation - will be expanded in the next section
     createAnimationPlan(prompt, images = []) {
+        // Store reference images at plan level for later use in frame generation
+        this.referenceImages = [...images];
+        console.log(`Storing ${this.referenceImages.length} reference images for later use`);
+        
         // Remove loading message
         this.removeLoadingMessage();
         
         // Generate a personalized confirmation message using the Gemini API
-        this.generateConfirmationMessage(prompt)
+        this.generateConfirmationMessage(prompt, images)
             .then(confirmationMessage => {
                 // Show the API-generated confirmation message
                 this.addAIMessage(confirmationMessage);
@@ -857,7 +867,9 @@ class Prompter {
                 console.error('Error generating confirmation message:', error);
                 
                 // Fallback to a simple confirmation in case the API call fails
-                this.addAIMessage(`<p>I'll create an animation based on: <strong>${prompt}</strong></p>`);
+                const imageMention = images && images.length > 0 ? 
+                  ` and your ${images.length === 1 ? 'reference image' : `${images.length} reference images`}` : '';
+                this.addAIMessage(`<p>I'll create an animation based on: <strong>${prompt}</strong>${imageMention}</p>`);
                 
                 // Show loading animation and continue with plan creation
                 const loadingMsg = this.showLoading();
@@ -884,11 +896,35 @@ class Prompter {
     }
     
     // New method to generate a personalized confirmation message using the Gemini API
-    async generateConfirmationMessage(prompt) {
+    async generateConfirmationMessage(prompt, images = []) {
         try {
             // Check if Gemini API is available
             if (!window.app || !window.app.model) {
-                return `Got it. Making an animation based on "${prompt}". Let's see what we can do with this...`;
+                return `Yeah, yeah. An animation about "${prompt}". Let's see what I can do with this...`;
+            }
+            
+            // Process any images for the confirmation message
+            const imageData = [];
+            if (images && images.length > 0) {
+                for (const img of images) {
+                    try {
+                        const base64Data = await this.getImageDataFromFile(img.file);
+                        imageData.push({
+                            inlineData: {
+                                data: base64Data,
+                                mimeType: img.file.type
+                            }
+                        });
+                    } catch (err) {
+                        console.error(`Failed to process image for confirmation message: ${img.file.name || 'unnamed'}`, err);
+                    }
+                }
+            }
+            
+            // Create image description text if images are present
+            let imageContext = "";
+            if (imageData.length > 0) {
+                imageContext = `The user has also uploaded ${imageData.length === 1 ? 'an image' : `${imageData.length} images`} as reference material. Briefly describe what you see in the image(s) in your own sarcastic way.`;
             }
             
             // Create a structured prompt for the confirmation message
@@ -897,29 +933,34 @@ class Prompter {
                     role: 'user',
                     parts: [
                         {
-                            text: `You are a skilled but slightly impatient animation assistant with a touch of sarcasm. You have a distinctive personality - you're direct, occasionally snarky, but still helpful. You're good at what you do and you know it. You never use emojis or exclamation points excessively.
+                            text: `You are a slightly jaded, sarcastic animation director who's seen it all. You've worked in the industry for decades and have a dry, sometimes biting wit. You're competent and know it. You see the truth in ideas - acknowledge good ones with a hint of surprise, and approach mediocre ones with skepticism but determination to make them work. You're not mean or rude - just straight-talking with an edge.
 
 A user has requested an animation with this description: "${prompt}"
+${imageContext}
 
 Write a brief confirmation message acknowledging their request. Your response must:
 1. Be concise (2-3 sentences maximum)
-2. Have a hint of sarcasm or dry wit without being rude
-3. Acknowledge their specific request
-4. NOT use bullet points, numbered lists, or emojis
-5. NOT be overly enthusiastic or use phrases like "I'm excited" or "I can't wait"
-6. Use markdown formatting sparingly (bold or italic) only where it adds impact
-7. Sound like a real person with an edge, not a generic AI
-8. Avoid cringe phrases like "locked and loaded" or "sprinkle magic"
+2. Have an unmistakable sarcastic tone without being cruel
+3. If their idea is genuinely interesting or creative, acknowledge it with a hint of impressed surprise 
+4. If their idea is basic/generic, subtly point that out but still convey you'll make it work
+5. If they've provided reference images, briefly describe what you see in a slightly judgmental but insightful way
+6. Never use corporate buzzwords, exclamation points, or overly positive language
+7. Use markdown formatting (bold or italic) very sparingly and only for emphasis on sarcastic points
+8. Sound like an actual person with years of expertise who doesn't need to fake enthusiasm
+9. Never say anything overtly negative or mean - your sarcasm should be witty, not hateful
+10. Never use cringe-worthy phrases or sound like you're trying too hard to be cool
 
-Remember, you're skilled but slightly impatient - write like someone who's competent and gets straight to the point.`
-                        }
+Write like someone who's too experienced to sugar-coat things but still takes pride in their craft.`
+                        },
+                        // Include any reference images
+                        ...imageData
                     ]
                 }],
                 generationConfig: {
-                    temperature: 0.7,
+                    temperature: 0.8,
                     topP: 0.9,
                     topK: 40,
-                    maxOutputTokens: 150
+                    maxOutputTokens: 200
                 }
             };
             
@@ -936,7 +977,8 @@ Remember, you're skilled but slightly impatient - write like someone who's compe
         } catch (error) {
             console.error('Error generating confirmation message:', error);
             // Return a fallback message
-            return `Got it. Making an animation based on "${prompt}". Let's see what we can do with this...`;
+            const imageMention = images && images.length > 0 ? ` and the ${images.length === 1 ? 'reference image' : 'reference images'}` : '';
+            return `So you want an animation about "${prompt}"${imageMention}? Fine, let's see what we can do.`;
         }
     }
     
@@ -956,8 +998,12 @@ Remember, you're skilled but slightly impatient - write like someone who's compe
             
             // Process uploaded images if any
             const imageData = [];
+            console.log(`Prompter received ${images.length} images for processing`, images);
+            
             if (images && images.length > 0) {
+                console.log("Processing images for Gemini API...");
                 for (const img of images) {
+                    try {
                     const base64Data = await this.getImageDataFromFile(img.file);
                     imageData.push({
                         inlineData: {
@@ -965,7 +1011,12 @@ Remember, you're skilled but slightly impatient - write like someone who's compe
                             mimeType: img.file.type
                         }
                     });
+                        console.log(`Successfully processed image: ${img.file.name || 'unnamed'} (${img.file.type})`);
+                    } catch (err) {
+                        console.error(`Failed to process image: ${img.file.name || 'unnamed'}`, err);
                 }
+                }
+                console.log(`Processed ${imageData.length} images for API request`);
             }
             
             // Create a structured prompt for planning the animation
@@ -1625,6 +1676,25 @@ The style should be consistent with other frames in the sequence, with smooth tr
                 previousFrameImage = await this.getImageDataFromUrl(prevFrame.imageUrls[prevFrame.selectedImageIndex]);
             }
             
+            // Process reference images if any exist from the initial prompt
+            const referenceImageData = [];
+            if (this.referenceImages && this.referenceImages.length > 0) {
+                console.log(`Processing ${this.referenceImages.length} reference images for frame ${index + 1} generation`);
+                for (const img of this.referenceImages) {
+                    try {
+                        const base64Data = await this.getImageDataFromFile(img.file);
+                        referenceImageData.push({
+                            inlineData: {
+                                data: base64Data,
+                                mimeType: img.file.type
+                            }
+                        });
+                    } catch (err) {
+                        console.error(`Failed to process reference image for frame generation: ${img.file.name || 'unnamed'}`, err);
+                    }
+                }
+            }
+            
             // Create parts for the prompt
             const promptParts = [];
 
@@ -1651,6 +1721,19 @@ The style should be consistent with other frames in the sequence, with smooth tr
                 });
                 promptParts.push({
                     text: "Use the provided reference image as a base for continuity. Maintain the same style, lighting, and key elements while adjusting for the described animation progress. PROVIDE ONLY ONE IMAGE, NO TEXT."
+                });
+            }
+            
+            // Add original reference images if available
+            if (referenceImageData.length > 0) {
+                // Add the reference images to the prompt
+                referenceImageData.forEach(imageData => {
+                    promptParts.push(imageData);
+                });
+                
+                // Add instructions for using the reference images
+                promptParts.push({
+                    text: `Also consider the ${referenceImageData.length === 1 ? 'reference image' : 'reference images'} provided by the user. Use these as inspiration for style, elements, or composition while creating this frame, but ensure it fits within the animation sequence.`
                 });
             }
             
@@ -2335,18 +2418,30 @@ The style should be consistent with other frames in the sequence, with smooth tr
         uiElement.querySelectorAll('input').forEach(input => input.disabled = true);
 
         try {
+            console.log("Starting GIF creation with", frameImages.length, "images");
             const gifBlob = await this.createGif(frameImages, delay);
+            console.log("GIF creation successful!");
                     const gifUrl = URL.createObjectURL(gifBlob);
             this.displayGeneratedGif(uiContainer, gifUrl, delay); // Pass delay for recreate
         } catch (error) {
             console.error('Error creating GIF:', error);
+            
+            // Get a more descriptive error message
+            let errorMsg = error.message || 'Unknown error occurred';
+            if (error.stack) {
+                console.error('Error stack:', error.stack);
+            }
+            
             uiContainer.innerHTML = `
                 <div class="prompter-export-ui active error">
                     <div class="prompter-export-header">
                          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg >
                         GIF Creation Failed
                         </div>
-                    <p class="error-message">${error.message}</p>
+                    <p class="error-message">${errorMsg}</p>
+                    <div class="error-details" style="font-size: 12px; color: #888; margin: 10px 0;">
+                        <p>Try refreshing the page and trying again. If the problem persists, reduce the number of frames or image quality.</p>
+                    </div>
                     <div class="prompter-export-actions">
                          <button class="prompter-export-button cancel">Close</button>
                          <button class="prompter-export-button recreate">Try Again</button>
@@ -2355,7 +2450,10 @@ The style should be consistent with other frames in the sequence, with smooth tr
             `;
             // Add listeners for close/try again
             uiContainer.querySelector('.cancel').addEventListener('click', () => uiContainer.innerHTML = '');
-            uiContainer.querySelector('.recreate').addEventListener('click', () => this.showGifExportUI(frameImages));
+            uiContainer.querySelector('.recreate').addEventListener('click', () => {
+                console.log("Retrying GIF creation with", frameImages.length, "images");
+                this.showGifExportUI(frameImages);
+            });
         }
     }
 
@@ -2404,7 +2502,7 @@ The style should be consistent with other frames in the sequence, with smooth tr
             // Need frameImages again - might need to store them temporarily or re-fetch
             const frameImages = this.currentPlan.frames
                                     .filter(f => f.status === 'complete' && f.imageUrls.length)
-                                    .map(f => f.imageUrls);
+                                    .map(f => f.imageUrls[f.selectedImageIndex || 0]);
             if (frameImages.length > 0) {
                 this.showGifExportUI(frameImages); // Show settings again
             } else {
@@ -2429,27 +2527,51 @@ The style should be consistent with other frames in the sequence, with smooth tr
                     throw new Error('GIF library (gifshot) not loaded.');
                 }
                 
-                const images = frameUrls;
-                if (images.length < 2) {
-                     throw new Error('Need at least 2 frames for a GIF.');
+                // Preload and validate images
+                const validImages = await this.preloadImages(frameUrls);
+                if (validImages.length < 2) {
+                     throw new Error('Need at least 2 valid images for a GIF.');
                 }
                 
-                const dimensions = await this.calculateOptimalDimensions(images);
+                const dimensions = await this.calculateOptimalDimensions(validImages);
+                
+                // Tell gifshot to optimize canvas for reading pixel data
+                window.gifshot.utils = window.gifshot.utils || {};
+                const originalGetCanvasElement = window.gifshot.utils.getCanvasElement;
+                
+                if (originalGetCanvasElement) {
+                    window.gifshot.utils.getCanvasElement = function() {
+                        const canvas = originalGetCanvasElement.apply(this, arguments);
+                        if (canvas && canvas.getContext) {
+                            const ctx = canvas.getContext('2d', { willReadFrequently: true });
+                        }
+                        return canvas;
+                    };
+                }
                 
                 window.gifshot.createGIF({
-                    images: images,
+                    images: validImages,
                     gifWidth: dimensions.width,
                     gifHeight: dimensions.height,
                     interval: delay / 1000, // Convert ms to seconds
-                    numFrames: images.length,
+                    numFrames: validImages.length,
                     frameDuration: 1, // Duration of 1 frame relative to interval
                     sampleInterval: 10, // Lower is better quality, higher is faster
                     numWorkers: 2, // Use 2 workers for potentially faster processing
                     progressCallback: (progress) => {
                         // console.log('GIF creation progress:', Math.round(progress * 100) + '%');
                         // Could update a progress bar in the UI here
+                    },
+                    // Add canvas option with willReadFrequently to address Canvas2D warnings
+                    canvas: {
+                        context2DOptions: { willReadFrequently: true }
                     }
                 }, (result) => {
+                    // Restore original function
+                    if (originalGetCanvasElement) {
+                        window.gifshot.utils.getCanvasElement = originalGetCanvasElement;
+                    }
+                    
                     if (!result.error) {
                         const binaryString = window.atob(result.image.split(',')[1]);
                         const len = binaryString.length;
@@ -2557,7 +2679,9 @@ The style should be consistent with other frames in the sequence, with smooth tr
                 canvas.width = 512;
                 canvas.height = 512;
                 
-                const ctx = canvas.getContext('2d');
+                // Use willReadFrequently: true to optimize for pixel manipulation
+                const ctx = canvas.getContext('2d', { willReadFrequently: true });
+                
                 // Draw with object-fit: cover style
                 const imgRatio = img.width / img.height;
                 const canvasRatio = canvas.width / canvas.height;
@@ -2855,44 +2979,57 @@ Remember, you're skilled but slightly impatient - write like someone who's compe
     }
 
     async deleteFrame(index) {
-        if (!this.currentPlan || index < 0 || index >= this.currentPlan.frameCount) return;
-        
-        // Get the frame element to animate its removal
-        const frameElement = document.querySelector(`.prompter-frame[data-index="${index}"]`);
-        if (frameElement) {
-            // Add delete animation
-            frameElement.style.transition = "all 0.5s ease";
-            frameElement.style.opacity = "0";
-            frameElement.style.transform = "scale(0.95) translateY(-10px)";
-            frameElement.style.overflow = "hidden";
-            
-            // Wait for animation to complete
-            await new Promise(resolve => setTimeout(resolve, 500));
-            
-            frameElement.style.maxHeight = "0";
-            frameElement.style.margin = "0";
-            frameElement.style.padding = "0";
-            
-            // Wait for height animation
-            await new Promise(resolve => setTimeout(resolve, 300));
+        if (!this.currentPlan || index < 0 || index >= this.currentPlan.frames.length) {
+            console.error(`Invalid index for frame deletion: ${index}`);
+            return;
         }
-        
-        // Remove the frame from the plan
+
+        const frameElementToDelete = document.querySelector(`.prompter-frame[data-index="${index}"]`);
+
+        // {{ add }} Add animation class and delay removal
+        if (frameElementToDelete) {
+            frameElementToDelete.classList.add('frame-deleting'); // Add class for animation
+
+            // Wait for animation to finish (match CSS duration)
+            setTimeout(() => {
+                this._performDeletion(index); // Call helper function after delay
+            }, 500); // Match CSS transition duration (0.5s)
+
+        } else {
+            // If element not found (edge case), delete data directly
+            console.warn(`Frame element ${index} not found in DOM for deletion animation.`);
+            this._performDeletion(index);
+        }
+    }
+
+    // {{ add }} Helper function to perform actual deletion after animation
+    _performDeletion(index) {
+        if (!this.currentPlan || index < 0 || index >= this.currentPlan.frames.length) {
+            return; // Double check index validity
+        }
+         console.log(`Performing deletion of frame data at index: ${index}`);
+
+        // Remove frame from the plan data
         this.currentPlan.frames.splice(index, 1);
-        
-        // Update frame count
         this.currentPlan.frameCount = this.currentPlan.frames.length;
         
-        // Update the indices of remaining frames
-        this.currentPlan.frames.forEach((frame, i) => {
-            frame.index = i;
-        });
-        
-        // Refresh the animation plan display
+        // Update indices of subsequent frames in the data
+        for (let i = index; i < this.currentPlan.frames.length; i++) {
+            this.currentPlan.frames[i].index = i;
+             // Also update the prompt text if it contains frame numbers (optional but good practice)
+             // Example: You might need a function to re-parse/update frame.prompt here
+             // this.currentPlan.frames[i].prompt = this.updateFramePromptIndex(this.currentPlan.frames[i].prompt, i + 1, this.currentPlan.frameCount);
+        }
+
+        // Show toast confirmation (optional)
+        this.showFrameActionToast(`Frame ${index + 1} deleted`, 'delete');
+
+        // Refresh the entire animation plan UI to reflect changes and re-render indices
+        // Using refreshAnimationPlan handles DOM updates and re-attaches listeners correctly
         this.refreshAnimationPlan();
         
-        // Show a success message
-        this.showFrameActionToast(`Frame ${index + 1} deleted successfully`, 'delete');
+        // Check completion status again after deletion
+        this.checkAllFramesComplete();
     }
 
     // Helper method to show a toast message for frame actions
@@ -3469,13 +3606,12 @@ Only return the JSON structure without additional text.`
         if (deleteBtn) {
             deleteBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                if (this.currentPlan.frames[index].imageUrls.length) {
-                    if (confirm(`Are you sure you want to delete Frame ${index + 1}? This cannot be undone.`)) {
+                console.log(`Delete button clicked for frame ${index}`);
+                // {{ edit }} Remove the confirm dialog completely
+                // if (confirm(`Are you sure you want to delete frame ${index + 1}?`)) {
+                    // No confirmation needed, just delete
                         this.deleteFrame(index);
-                    }
-                } else {
-                    this.deleteFrame(index);
-                }
+                // }
             });
         }
         
@@ -3527,7 +3663,7 @@ Only return the JSON structure without additional text.`
         if (retryBtn) {
             retryBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                 // --- MODIFICATION START: Update status and UI *before* generating ---
+                 // --- MODIFICATION: Update status and UI *before* generating ---
                 // Mark frame as generating first
                 this.currentPlan.frames[index].status = 'generating';
                 this.currentPlan.frames[index].errorMessage = null; // Clear error message
@@ -3994,6 +4130,53 @@ Do not include any text outside this JSON structure.`
         }
     }
     // --- END ADDED ---
+
+    // Add a method to preload and validate images before creating the GIF
+    async preloadImages(imageUrls) {
+        console.log("Preloading", imageUrls.length, "images");
+        return new Promise((resolve, reject) => {
+            const validImages = [];
+            let loadedCount = 0;
+            let errorCount = 0;
+            
+            if (!imageUrls || imageUrls.length === 0) {
+                reject(new Error("No image URLs provided"));
+                return;
+            }
+            
+            imageUrls.forEach((url, index) => {
+                const img = new Image();
+                img.crossOrigin = "Anonymous";
+                
+                img.onload = () => {
+                    console.log(`Image ${index} loaded: ${img.width}x${img.height}`);
+                    validImages.push(url);
+                    loadedCount++;
+                    checkIfDone();
+                };
+                
+                img.onerror = (e) => {
+                    console.error(`Failed to load image ${index}:`, url, e);
+                    errorCount++;
+                    loadedCount++;
+                    checkIfDone();
+                };
+                
+                img.src = url;
+            });
+            
+            function checkIfDone() {
+                if (loadedCount === imageUrls.length) {
+                    if (validImages.length < 2) {
+                        reject(new Error(`Not enough valid images (${validImages.length} of ${imageUrls.length})`));
+                    } else {
+                        console.log(`Successfully preloaded ${validImages.length} of ${imageUrls.length} images`);
+                        resolve(validImages);
+                    }
+                }
+            }
+        });
+    }
 }
 
 // Initialize the prompter when the page loads

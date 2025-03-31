@@ -1167,11 +1167,12 @@ header h1 {
     margin: 12px 0;
     border-radius: 12px;
     overflow: hidden;
-    background: rgba(0, 0, 0, 0.2);
+    background: transparent; /* Changed from rgba(0, 0, 0, 0.2) to fix gray space issue */
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
     transition: all 0.3s var(--animation-pop);
     max-width: 500px;
     position: relative;
+    cursor: pointer;
 }
 
 .image-container:hover {
@@ -1184,6 +1185,8 @@ header h1 {
     max-width: 100%;
     height: auto;
     transition: all 0.4s ease;
+    max-height: 500px; /* Increased from 300px for larger images */
+    object-fit: contain; /* Changed from cover to contain to preserve aspect ratio */
 }
 
 .image-loading {
@@ -1700,18 +1703,27 @@ header h1 {
     max-width: 500px;
     background: var(--bg-tertiary);
     border-radius: 20px;
-    padding: 28px;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
     position: relative;
     transform: translateY(-30px);
     transition: all 0.4s var(--animation-pop);
     border: 1px solid rgba(var(--background-modifier-border-rgb), 0.1);
+    display: flex;
+    flex-direction: column;
+    max-height: 85vh; /* Limit overall modal height */
+}
+
+.modal-header {
+    padding: 24px 28px 16px 28px; /* Padding for title/close button */
+    border-bottom: 1px solid var(--input-border); /* Separator line */
+    flex-shrink: 0; /* Prevent header from shrinking */
+    position: relative;
 }
 
 .close-button {
     position: absolute;
-    top: 20px;
-    right: 20px;
+    top: 20px; /* Keep relative to header top */
+    right: 24px; /* Adjust right padding */
     background: rgba(var(--background-secondary-rgb), 0.3);
     border: none;
     width: 36px;
@@ -1723,6 +1735,7 @@ header h1 {
     cursor: pointer;
     color: var(--text-secondary);
     transition: all 0.3s ease;
+    z-index: 1; /* Ensure it's above title */
 }
 
 .close-button:hover {
@@ -1733,13 +1746,41 @@ header h1 {
 
 .modal h2 {
     font-size: 24px;
-    margin-bottom: 24px;
+    margin-bottom: 0; /* Remove bottom margin, handled by header padding */
     color: var(--text-primary);
     font-weight: 700;
 }
 
+.modal-scroll-content {
+    padding: 20px 28px 28px 28px;
+    overflow-y: auto;
+    flex-grow: 1; /* Allow content to take available space */
+    scrollbar-width: thin; /* Firefox */
+    scrollbar-color: var(--primary-color) transparent; /* Firefox */
+}
+
+.modal-scroll-content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.modal-scroll-content::-webkit-scrollbar-track {
+    background: transparent; /* Make track invisible */
+    margin: 5px 0; /* Add some margin to track */
+}
+
+.modal-scroll-content::-webkit-scrollbar-thumb {
+    background-color: rgba(var(--text-accent-rgb), 0.4); /* Subtle thumb color */
+    border-radius: 6px;
+    border: 1px solid transparent; /* Ensure border doesn't add width */
+    background-clip: content-box; /* Clip background to content box */
+}
+
+.modal-scroll-content::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(var(--text-accent-rgb), 0.6); /* Darker on hover */
+}
+
 .setting-group {
-    margin-bottom: 28px;
+    margin-bottom: 24px; /* Reduced margin slightly */
 }
 
 .setting-group:last-child {
@@ -2626,7 +2667,7 @@ input:checked + .slider:before {
     margin: 12px 0;
     border-radius: 12px;
     overflow: hidden;
-    background: rgba(0, 0, 0, 0.2);
+    background: transparent; /* Changed from rgba(0, 0, 0, 0.2) to fix gray space issue */
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
     transition: all 0.3s var(--animation-pop);
     max-width: 500px;
@@ -2639,8 +2680,8 @@ input:checked + .slider:before {
     max-width: 100%;
     height: auto;
     transition: all 0.4s ease;
-    max-height: 300px; /* Default compact height */
-    object-fit: cover;
+    max-height: 500px; /* Increased from 300px for larger images */
+    object-fit: contain; /* Changed from cover to contain to preserve aspect ratio */
 }
 
 /* Prompter Toggle Button */

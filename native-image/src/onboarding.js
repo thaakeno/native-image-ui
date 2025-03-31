@@ -67,6 +67,7 @@ class PrompterOnboarding {
             { // Step 2: Enable Prompter
                 title: "Step 2: Enabling the Feature",
                 content: `<p>Inside the settings menu, find the <strong>Animation Prompter</strong> option.</p><p>We'll activate it using this toggle ${this.icons.toggleOn}. This adds the animation tools to your chat.</p>`,
+                mobileContent: `<p>Scroll down in the settings menu to find the <strong>Animation Prompter</strong> option.</p><p>Tap the toggle switch ${this.icons.toggleOn} to enable this feature and add animation tools to your chat.</p>`,
                 targetSelector: '#prompter-toggle',
                 highlightPadding: 12,
                 placement: 'right-start',
@@ -84,6 +85,7 @@ class PrompterOnboarding {
             { // Step 3: Close Settings
                 title: "Step 3: Back to the Chat",
                 content: `<p>Great! The Animation Prompter is now enabled.</p><p>Let's close the settings panel using the <strong>Close button</strong> ${this.icons.close} to see the new tools.</p>`,
+                mobileContent: `<p>Great! The Animation Prompter is now enabled.</p><p>Tap the <strong>X button</strong> ${this.icons.close} in the top-right to close the settings and see the new tools.</p>`,
                 targetSelector: '#settings-modal .modal-content .close-button',
                 highlightPadding: 10,
                 placement: 'bottom',
@@ -361,12 +363,16 @@ class PrompterOnboarding {
 
         const headerIcon = step.stepIcon || this.icons.sparkles; // Default to sparkles
 
+        // Check if we should use mobile content
+        const isMobileView = window.innerWidth <= 768;
+        const contentToUse = (isMobileView && step.mobileContent) ? step.mobileContent : step.content;
+
         stepContent.innerHTML = `
             <div class="onboarding-header">
                 <div class="onboarding-icon">${headerIcon}</div>
                 <h2>${step.title}</h2>
             </div>
-            ${step.content}
+            ${contentToUse}
         `;
 
         this.onboardingElement.appendChild(progressBar);
@@ -658,7 +664,26 @@ class PrompterOnboarding {
             const vpPadding = 15; // More padding from viewport edges
             let idealTop, idealLeft;
 
-            if (!targetElement || placement === 'center') { // Handle explicit 'center'
+            // First check if we're on a mobile device
+            const isMobileView = window.innerWidth <= 768;
+            const isStep2 = this.currentStepIndex === 2;
+
+            // SPECIAL CASE FOR STEP 2 ON MOBILE: Position at the top of the settings dialog
+            if (isMobileView && isStep2 && targetElement) {
+                console.log("Using mobile-specific positioning for Step 2");
+                // Find the settings modal
+                const settingsModal = document.querySelector('#settings-modal .modal-content');
+                if (settingsModal) {
+                    const modalRect = settingsModal.getBoundingClientRect();
+                    // Position the tooltip at the top of the settings dialog rather than over the toggle
+                    idealTop = modalRect.top + 60; // Position below the header
+                    idealLeft = (window.innerWidth - boxRect.width) / 2; // Center horizontally
+                } else {
+                    // Fallback to centered if modal not found
+                    idealTop = 70; // Position near top of screen 
+                    idealLeft = (window.innerWidth - boxRect.width) / 2;
+                }
+            } else if (!targetElement || placement === 'center') { // Handle explicit 'center'
                 idealTop = window.innerHeight / 2 - boxRect.height / 2;
                 idealLeft = window.innerWidth / 2 - boxRect.width / 2;
             } else {
@@ -684,6 +709,38 @@ class PrompterOnboarding {
                 const chosenPlacement = placements[placement] || placements['bottom']; // Default to bottom if placement is invalid
                 idealTop = chosenPlacement.top;
                 idealLeft = chosenPlacement.left;
+
+                // On mobile, modify positioning for all steps to avoid overlapping the target
+                if (isMobileView) {
+                    // For all non-special cases on mobile, try to place tooltip above or below element
+                    // with enough distance to not overlap it
+                    const extraMargin = margin * 2; // Double the margin for mobile
+                    if (placement.includes('bottom')) {
+                        idealTop = targetRect.bottom + extraMargin;
+                    } else if (placement.includes('top')) {
+                        idealTop = targetRect.top - boxRect.height - extraMargin;
+                    } else if (placement.includes('right')) {
+                        // Center horizontally on small screens regardless of intended placement
+                        idealLeft = (window.innerWidth - boxRect.width) / 2;
+                        if (targetRect.bottom + extraMargin + boxRect.height <= window.innerHeight - vpPadding) {
+                            // Enough room below
+                            idealTop = targetRect.bottom + extraMargin;
+                        } else {
+                            // Try above
+                            idealTop = targetRect.top - boxRect.height - extraMargin;
+                        }
+                    } else if (placement.includes('left')) {
+                        // Center horizontally on small screens
+                        idealLeft = (window.innerWidth - boxRect.width) / 2;
+                        if (targetRect.bottom + extraMargin + boxRect.height <= window.innerHeight - vpPadding) {
+                            // Enough room below
+                            idealTop = targetRect.bottom + extraMargin;
+                        } else {
+                            // Try above
+                            idealTop = targetRect.top - boxRect.height - extraMargin;
+                        }
+                    }
+                }
 
                 // Fallback positioning logic (keep as is, seems reasonable)
                 const isVisible = (top, left, width, height) => {

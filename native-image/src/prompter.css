@@ -643,9 +643,18 @@
     overflow: hidden;
     border: 1px solid rgba(var(--background-modifier-border-rgb), 0.12);
     /* --- ADDED Transition --- */
-    transition: transform 0.15s ease, 
-                box-shadow 0.5s ease-in-out, /* Smooth transition for shadow */
-                border-color 0.5s ease-in-out; /* Smooth transition for border */
+    transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+                box-shadow 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+                /* {{ add }} Add opacity and height transitions */
+                opacity 0.5s ease-out,
+                max-height 0.5s ease-out,
+                margin-bottom 0.5s ease-out,
+                padding-top 0.5s ease-out,
+                padding-bottom 0.5s ease-out,
+                border-width 0.5s ease-out;
+    opacity: 1;
+    max-height: 500px; /* Adjust if necessary to fit content */
+    overflow: hidden; /* Needed for max-height transition */
     box-shadow: 
         0 10px 30px rgba(0, 0, 0, 0.08),
         0 4px 8px rgba(0, 0, 0, 0.06),
@@ -656,6 +665,18 @@
     flex-direction: row;
     transform: translateZ(0) translateY(0);
     will-change: transform, box-shadow, border-color; /* Include border-color */
+}
+
+/* {{ add }} Add styles for the deleting animation */
+.prompter-frame.frame-deleting {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95); /* Optional: subtle shrink/move up */
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    margin-bottom: 0;
+    border-width: 0; /* Fade out border */
+    pointer-events: none; /* Prevent interaction during removal */
 }
 
 .prompter-frame::before {

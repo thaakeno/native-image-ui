@@ -189,100 +189,104 @@
         
         <div id="settings-modal" class="modal">
             <div class="modal-content">
-                <button class="close-button" aria-label="Close settings">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                    </svg>
-                </button>
-                <h2>Settings</h2>
-                <div class="setting-group">
-                    <label for="api-key">Gemini API Key:</label>
-                    <div class="input-with-icon">
-                        <input type="password" id="api-key" placeholder="Enter your Gemini API Key">
-                        <button id="toggle-api-visibility" aria-label="Toggle API key visibility">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="eye-icon">
-                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                <circle cx="12" cy="12" r="3"></circle>
+                <div class="modal-header">
+                    <button class="close-button" aria-label="Close settings">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                    <h2>Settings</h2>
+                </div>
+                <div class="modal-scroll-content">
+                    <div class="setting-group">
+                        <label for="api-key">Gemini API Key:</label>
+                        <div class="input-with-icon">
+                            <input type="password" id="api-key" placeholder="Enter your Gemini API Key">
+                            <button id="toggle-api-visibility" aria-label="Toggle API key visibility">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="eye-icon">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                </svg>
+                            </button>
+                        </div>
+                        <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" class="api-key-link">
+                            Get your API key here for free
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                                <polyline points="15 3 21 3 21 9"></polyline>
+                                <line x1="10" y1="14" x2="21" y2="3"></line>
                             </svg>
+                        </a>
+                        <button id="save-api-key">Save API Key</button>
+                    </div>
+                    <div class="setting-group">
+                        <label for="temperature">Temperature: <span id="temperature-value">1.0</span></label>
+                        <div class="slider-container">
+                            <input type="range" id="temperature" min="0" max="1" step="0.1" value="1">
+                            <div class="slider-labels">
+                                <span>More Focused</span>
+                                <span>More Creative</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="setting-group">
+                        <label for="max-tokens">Max Output Tokens: <span id="max-tokens-value">8192</span></label>
+                        <div class="slider-container">
+                            <input type="range" id="max-tokens" min="1000" max="8192" step="100" value="8192">
+                            <div class="slider-labels">
+                                <span>Shorter</span>
+                                <span>Longer</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="setting-group toggle-group">
+                        <label for="debug-toggle">Debug Mode</label>
+                        <label class="switch">
+                            <input type="checkbox" id="debug-toggle">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                    <div class="setting-group toggle-group">
+                        <label for="carousel-toggle">Enable Image Carousels</label>
+                        <label class="switch">
+                            <input type="checkbox" id="carousel-toggle" checked>
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                    <div class="setting-group toggle-group">
+                        <label for="prompter-toggle">Animation Prompter</label>
+                        <label class="switch">
+                            <input type="checkbox" id="prompter-toggle">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                    <div class="setting-group">
+                        <button id="show-prompter-onboarding" class="settings-action-button">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="12" y1="16" x2="12" y2="12"></line>
+                                <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                            </svg>
+                            Animation Prompter Tutorial
                         </button>
                     </div>
-                    <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" class="api-key-link">
-                        Get your API key here for free
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                            <polyline points="15 3 21 3 21 9"></polyline>
-                            <line x1="10" y1="14" x2="21" y2="3"></line>
-                        </svg>
-                    </a>
-                    <button id="save-api-key">Save API Key</button>
-                </div>
-                <div class="setting-group">
-                    <label for="temperature">Temperature: <span id="temperature-value">1.0</span></label>
-                    <div class="slider-container">
-                        <input type="range" id="temperature" min="0" max="1" step="0.1" value="1">
-                        <div class="slider-labels">
-                            <span>More Focused</span>
-                            <span>More Creative</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="setting-group">
-                    <label for="max-tokens">Max Output Tokens: <span id="max-tokens-value">8192</span></label>
-                    <div class="slider-container">
-                        <input type="range" id="max-tokens" min="1000" max="8192" step="100" value="8192">
-                        <div class="slider-labels">
-                            <span>Shorter</span>
-                            <span>Longer</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="setting-group toggle-group">
-                    <label for="debug-toggle">Debug Mode</label>
-                    <label class="switch">
-                        <input type="checkbox" id="debug-toggle">
-                        <span class="slider round"></span>
-                    </label>
-                </div>
-                <div class="setting-group toggle-group">
-                    <label for="carousel-toggle">Enable Image Carousels</label>
-                    <label class="switch">
-                        <input type="checkbox" id="carousel-toggle" checked>
-                        <span class="slider round"></span>
-                    </label>
-                </div>
-                <div class="setting-group toggle-group">
-                    <label for="prompter-toggle">Animation Prompter</label>
-                    <label class="switch">
-                        <input type="checkbox" id="prompter-toggle">
-                        <span class="slider round"></span>
-                    </label>
-                </div>
-                <div class="setting-group">
-                    <button id="show-prompter-onboarding" class="settings-action-button">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <line x1="12" y1="16" x2="12" y2="12"></line>
-                            <line x1="12" y1="8" x2="12.01" y2="8"></line>
-                        </svg>
-                        Animation Prompter Tutorial
-                    </button>
-                </div>
-                <div class="setting-group">
-                    <label for="theme-selector">Themes</label>
-                    <div class="theme-selector-container">
-                        <select id="theme-selector" class="theme-select">
-                            <option value="mint">Mint (Default)</option>
-                            <option value="onyx">Onyx</option>
-                        </select>
-                        <div class="theme-preview">
-                            <div class="theme-preview-mint">
-                                <span class="preview-dot mint-primary"></span>
-                                <span class="preview-dot mint-secondary"></span>
-                            </div>
-                            <div class="theme-preview-onyx">
-                                <span class="preview-dot onyx-primary"></span>
-                                <span class="preview-dot onyx-secondary"></span>
+                    <div class="setting-group">
+                        <label for="theme-selector">Themes</label>
+                        <div class="theme-selector-container">
+                            <select id="theme-selector" class="theme-select">
+                                <option value="mint">Mint (Default)</option>
+                                <option value="onyx">Onyx</option>
+                            </select>
+                            <div class="theme-preview">
+                                <div class="theme-preview-mint">
+                                    <span class="preview-dot mint-primary"></span>
+                                    <span class="preview-dot mint-secondary"></span>
+                                </div>
+                                <div class="theme-preview-onyx">
+                                    <span class="preview-dot onyx-primary"></span>
+                                    <span class="preview-dot onyx-secondary"></span>
+                                </div>
                             </div>
                         </div>
                     </div>

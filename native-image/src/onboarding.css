@@ -420,19 +420,47 @@
 /* Mobile responsive improvements */
 @media (max-width: 768px) {
     .onboarding-container {
-        max-width: 92%;
-        width: 92%;
-        border-radius: 16px; /* Slightly less rounded on mobile */
+        max-width: 360px; /* Further constrain max width */
+        width: 90%; /* Use slightly less screen width */
+        border-radius: 16px; /* Keep */
     }
-    .onboarding-step { padding: 20px 25px 25px 25px; } /* Less padding */
-    .onboarding-header { margin-bottom: 20px; gap: 12px; }
-    .onboarding-header h2 { font-size: 1.4rem; }
-    .onboarding-icon { width: 44px; height: 44px; border-radius: 12px;}
-    .onboarding-icon svg { width: 22px; height: 22px; }
-    .onboarding-step p { font-size: 0.95rem; line-height: 1.7; }
-    .onboarding-footer { padding: 18px 25px; }
-    .onboarding-button { padding: 11px 20px; font-size: 0.95rem; }
-    .onboarding-close { top: 12px; right: 12px; width: 32px; height: 32px; }
+    .onboarding-step {
+        padding: 18px 20px 20px 20px; /* Tighter padding */
+    }
+    .onboarding-header {
+        margin-bottom: 16px; /* Less space below header */
+        gap: 10px; /* Slightly smaller gap */
+    }
+    .onboarding-header h2 {
+        font-size: 1.25rem; /* Smaller heading */
+    }
+    .onboarding-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px; /* Adjust radius */
+    }
+    .onboarding-icon svg {
+        width: 20px;
+        height: 20px;
+    }
+    .onboarding-step p {
+        font-size: 0.9rem; /* Smaller text */
+        line-height: 1.6; /* Adjust line height */
+        margin: 12px 0 16px 0; /* Adjust margins */
+    }
+    .onboarding-footer {
+        padding: 15px 20px; /* Tighter footer padding */
+    }
+    .onboarding-button {
+        padding: 10px 18px; /* Smaller button */
+        font-size: 0.9rem; /* Smaller button text */
+    }
+    .onboarding-close {
+        top: 12px;
+        right: 12px;
+        width: 32px;
+        height: 32px;
+    }
 }
 
 /* Reduce motion preference */

@@ -856,18 +856,18 @@ document.addEventListener('DOMContentLoaded', () => {
             userInput.value = '';
             userInput.style.height = 'auto';
             
-            // Clear uploaded images
-            uploadedImages = [];
-            const previewContainer = document.querySelector('.image-preview-container');
-            if (previewContainer) {
-                previewContainer.remove();
-            }
-            
             // Scroll to bottom
             scrollToBottom();
             
             // Handle the message with the prompter
             window.prompter.handleUserMessage(userMessage, uploadedImages);
+            
+            // Clear uploaded images AFTER passing to prompter
+            uploadedImages = [];
+            const previewContainer = document.querySelector('.image-preview-container');
+            if (previewContainer) {
+                previewContainer.remove();
+            }
             
             // Don't continue with normal message handling
             return;
