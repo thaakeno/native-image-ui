@@ -1030,7 +1030,7 @@ Write like someone who's too experienced to sugar-coat things but still takes pr
                             
 Please create a detailed animation plan with the following structure:
 1. A brief description of the overall animation concept
-2. The recommended number of frames (between 3-8 frames)
+2. The recommended number of frames (between 3-20 frames)
 3. A detailed description for each frame, including:
    - Frame number
    - Detailed visual description
@@ -1040,7 +1040,7 @@ Please create a detailed animation plan with the following structure:
 Format your response as a JSON object with this structure:
 {
   "concept": "Overall description of the animation",
-  "frameCount": <number_between_3_and_8>, // Use the recommended number here
+  "frameCount": <number_between_3_and_20>, // Use the recommended number here
   "frames": [
     {
       "index": 0,

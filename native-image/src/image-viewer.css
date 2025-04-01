@@ -347,6 +347,7 @@ body:not(.carousel-enabled) .user-message .image-container {
 /* Improved Thumbnails */
 .carousel-thumbnails {
     display: flex;
+    justify-content: center;
     overflow-x: auto;
     overflow-y: hidden;
     scroll-behavior: smooth;
