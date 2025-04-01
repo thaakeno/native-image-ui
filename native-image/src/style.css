@@ -139,13 +139,13 @@
 body {
     background-color: var(--bg-color);
     color: var(--text-primary);
-    min-height: 100vh;
     width: 100%;
     overscroll-behavior: none;
     background: radial-gradient(circle at 20% 20%, rgba(var(--text-accent-rgb), 0.05) 0%, transparent 70%),
                 radial-gradient(circle at 80% 80%, rgba(var(--text-accent-rgb), 0.05) 0%, transparent 80%),
                 var(--bg-color);
     transition: background-color 0.5s cubic-bezier(0.19, 1, 0.22, 1);
+    overflow: hidden; /* Prevent body scrolling */
 }
 
 ::-webkit-scrollbar {
@@ -177,10 +177,11 @@ body {
     max-width: 1100px;
     margin: 0 auto;
     padding: 16px;
-    height: 100vh;
+    height: 100dvh; /* Use dynamic viewport height instead */
     display: flex;
     flex-direction: column;
     animation: fadeIn 0.5s ease;
+    overflow: hidden; /* Prevent app-container's content from causing overflow */
 }
 
 @keyframes fadeIn {
@@ -415,7 +416,7 @@ header h1 {
     flex: 1;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    overflow: hidden; /* Prevent overflow outside the container */
     position: relative;
     border-radius: var(--border-radius);
     box-shadow: var(--card-shadow);
@@ -424,6 +425,7 @@ header h1 {
     -webkit-backdrop-filter: blur(20px);
     border: 1px solid rgba(var(--background-modifier-border-rgb), 0.15);
     animation: slideUp 0.5s var(--animation-slide);
+    min-height: 0; /* Critical for flexbox child to not overflow its parent */
 }
 
 @keyframes slideUp {
@@ -448,6 +450,8 @@ header h1 {
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
     will-change: scroll-position;
+    min-height: 0; /* Critical for proper scrolling in a flex child */
+    max-height: 100%; /* Ensure it doesn't grow beyond its container */
 }
 
 /* MESSAGE STYLES */
@@ -2092,6 +2096,8 @@ input:checked + .slider:before {
 @media (max-width: 768px) {
     .app-container {
         padding: 12px;
+        height: 100dvh; /* Ensure dynamic viewport height on mobile too */
+        overflow: hidden; /* Prevent overflow causing scrollbars */
     }
     
     header {
@@ -2112,6 +2118,9 @@ input:checked + .slider:before {
     
     .input-container {
         padding: 16px;
+        position: sticky; /* Keep input container always visible */
+        bottom: 0;
+        z-index: 50;
     }
     
     .modal-content {
@@ -2137,10 +2146,6 @@ input:checked + .slider:before {
     @keyframes subtle-pulse {
         0% { box-shadow: 0 0 15px rgba(var(--text-accent-rgb), 0.2), var(--depth-shadow-1); }
         100% { box-shadow: 0 0 25px rgba(var(--text-accent-rgb), 0.35), var(--depth-shadow-1); }
-    }
-    
-    .app-container {
-        overflow-x: hidden; /* Prevent horizontal scroll during animations */
     }
 }
 
@@ -2880,6 +2885,25 @@ input:checked + .slider:before {
         rgba(var(--primary-color-rgb), 0.15),
         rgba(var(--primary-color-rgb), 0.25));
     box-shadow: 0 4px 12px rgba(var(--primary-color-rgb), 0.1);
+}
+
+/* Add these styles to fix the spacing in the system instructions modal */
+.system-instructions-modal-content h2 {
+    padding: 24px 28px 8px 28px;
+    margin: 0;
+}
+
+.system-instructions-modal-content .system-instructions-description {
+    padding: 0 28px;
+    margin-bottom: 20px;
+}
+
+.system-instructions-modal-content .setting-group {
+    padding: 0 28px;
+}
+
+.system-instructions-modal-content .setting-group:last-child {
+    padding-bottom: 28px;
 }
 
 

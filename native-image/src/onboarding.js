@@ -11,6 +11,7 @@ class PrompterOnboarding {
         this.onboardingShown = localStorage.getItem('prompterOnboardingComplete') === 'true';
         this.isAutoExecuting = false; // Flag for the automated tour
         this.autoExecuteTimeout = null; // Timeout ID for delays
+        this.isFirstTimeUser = false; // Add flag for first-time users
 
         // UI Elements
         this.onboardingElement = null;
@@ -227,16 +228,9 @@ class PrompterOnboarding {
             document.head.appendChild(style);
         }
 
-        // Add debug button for testing (keep from v8)
-        const triggerBtnExists = document.getElementById('onboarding-test-trigger');
-        if (!triggerBtnExists) {
-            const triggerBtn = document.createElement('button');
-            triggerBtn.id = 'onboarding-test-trigger';
-            triggerBtn.textContent = 'Start Tour (V9)'; // Update text
-            triggerBtn.style.cssText = `position: fixed; bottom: 10px; right: 10px; z-index: 10001; padding: 8px 12px; background-color: #8A2BE2; color: white; border: none; border-radius: 5px; cursor: pointer; opacity: 0.8; font-size: 12px;`; // Different color
-            triggerBtn.onclick = () => this.startOnboarding();
-            document.body.appendChild(triggerBtn);
-        }
+        // Check if this is the user's first visit
+        const hasCompletedOnboarding = localStorage.getItem('onboarding_completed') === 'true';
+        this.isFirstTimeUser = !hasCompletedOnboarding;
 
         // Global listeners (keep from v8)
         document.addEventListener('keydown', (e) => {
@@ -835,12 +829,12 @@ class PrompterOnboarding {
 
         // Set completion flag & remove listeners
         localStorage.setItem('prompterOnboardingComplete', 'true');
+        // Store in both old and new locations for backward compatibility
+        localStorage.setItem('onboarding_completed', 'true');
         this.onboardingShown = true;
         window.removeEventListener('resize', this.boundHandleResize);
         // TODO: Remove global keydown listener if added specifically for onboarding
 
-        // Optionally remove the test trigger button on completion
-        document.getElementById('onboarding-test-trigger')?.remove();
         console.log("Onboarding cleanup complete.");
     }
 
@@ -912,8 +906,8 @@ class PrompterOnboarding {
 
 // Initialize the onboarding
 document.addEventListener('DOMContentLoaded', () => {
-    if (!window.prompterOnboardingInstance) { // Prevent multiple initializations
-        window.prompterOnboardingInstance = new PrompterOnboarding();
+    if (!window.prompterOnboarding) { // Prevent multiple initializations
+        window.prompterOnboarding = new PrompterOnboarding();
         console.log("PrompterOnboarding instance created.");
 
         // Example: Add a button elsewhere in the app to restart the tour
@@ -926,17 +920,10 @@ document.addEventListener('DOMContentLoaded', () => {
                  // Close settings modal if open (assuming you have a function for that)
                  // e.g., closeSettingsModal();
                  // Find the instance and restart
-                 if (window.prompterOnboardingInstance) {
-                    window.prompterOnboardingInstance.restartOnboarding();
+                 if (window.prompterOnboarding) {
+                    window.prompterOnboarding.restartOnboarding();
                  }
             });
         }
     }
-    // Auto-start logic (keep commented unless desired)
-    /*
-    if (!window.prompterOnboardingInstance.onboardingShown) {
-         console.log("Auto-starting onboarding tour (v9).");
-         setTimeout(() => window.prompterOnboardingInstance.startOnboarding(), 2500);
-    }
-    */
 }); 

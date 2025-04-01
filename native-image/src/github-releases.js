@@ -41,6 +41,9 @@ class GitHubReleases {
             // Create event listeners - moved this after fetching so we have proper data
             this.setupEventListeners();
             
+            // Check if this is a first-time user (no onboarding completed)
+            const isFirstTimeUser = localStorage.getItem('onboarding_completed') !== 'true';
+            
             // Check if we have new releases since last visited
             // Get the timestamp from localStorage directly to ensure we have the latest value
             const lastVisitedTimestamp = parseInt(localStorage.getItem('github_releases_last_visited') || '0');
@@ -53,20 +56,21 @@ class GitHubReleases {
             if (hasNewReleases) {
                 this.showUpdateNotification();
                 this.showWhatsNewBadges();
+            }
                 
-                // Show panel on startup only if option is enabled AND there are truly new releases
-                // the user hasn't viewed yet (using the lastVisited timestamp from localStorage)
-                const showOnlyNew = localStorage.getItem('github_releases_show_only_new') === 'true';
-                if (this.options.showOnStartup) {
+            // Show panel on startup if:
+            // 1. There are new releases AND showOnStartup is enabled, OR
+            // 2. This is a first-time user 
+            if ((this.options.showOnStartup && hasNewReleases) || isFirstTimeUser) {
                 setTimeout(() => {
                     this.showReleasePanel();
                         
-                        // If "show only new" is checked, apply the filter immediately
-                        if (showOnlyNew) {
-                            this.applyFilters();
-                        }
+                    // If "show only new" is checked, apply the filter immediately
+                    const showOnlyNew = localStorage.getItem('github_releases_show_only_new') === 'true';
+                    if (showOnlyNew) {
+                        this.applyFilters();
+                    }
                 }, 1000);
-                }
             }
             
             // Set up auto-updates while app is running

@@ -2679,6 +2679,80 @@
     .add-frame-btn {
         min-height: 100px;
     }
+    
+    /* Make Animation Plan container full width on mobile */
+    /* Target with :has() for modern browsers */
+    .prompter-message:has(.prompter-frames-container),
+    /* Fallback for browsers without :has() support */
+    .prompter-message.animation-plan-message {
+        max-width: 100% !important;
+        width: 100% !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        padding-left: 12px !important;
+        padding-right: 12px !important;
+        box-sizing: border-box !important;
+    }
+    
+    /* Target the message content directly */
+    .prompter-message:has(.prompter-frames-container) .prompter-message-content,
+    .prompter-message.animation-plan-message .prompter-message-content {
+        max-width: 100% !important;
+        width: 100% !important;
+    }
+    
+    /* Ensure the frames container itself is full width */
+    .prompter-frames-container {
+        width: 100% !important;
+    }
+    
+    /* Animation plan header responsiveness */
+    .animation-plan-header {
+        flex-wrap: wrap;
+    }
+    
+    /* Adjust frame layouts for mobile */
+    .prompter-frame {
+        padding: 12px;
+        /* Ensure the frame takes full width in regular layout */
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+    
+    /* Improve grid layout for mobile */
+    .frames-grid-layout .prompter-frames-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)) !important;
+        gap: 12px !important;
+    }
+    
+    .frames-grid-layout .prompter-frame {
+        padding: 10px;
+        /* Reset the width for grid layout */
+        width: auto;
+    }
+    
+    .frames-grid-layout .prompter-frame-image-placeholder {
+        height: 120px !important; /* Smaller height for mobile */
+    }
+    
+    /* Make frame action buttons more accessible on mobile */
+    .prompter-frame-actions {
+        flex-wrap: wrap;
+        justify-content: space-around;
+        gap: 8px;
+    }
+    
+    /* Make generate all and export buttons stack on mobile */
+    .prompter-actions {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .prompter-action-button {
+        width: 100%;
+    }
 }
 
 /* Toast notification styles */

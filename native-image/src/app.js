@@ -139,12 +139,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // 2. Check if the onboarding instance exists and call restart
-            if (window.prompterOnboardingInstance && typeof window.prompterOnboardingInstance.restartOnboarding === 'function') {
+            if (window.prompterOnboarding && typeof window.prompterOnboarding.restartOnboarding === 'function') {
                 // {{ edit }} Removed any checks for "feature availability" here. Just restart.
                 console.log("Calling restartOnboarding...");
                 // Add a tiny delay to ensure modal is visually closed before tour starts
                 setTimeout(() => {
-                     window.prompterOnboardingInstance.restartOnboarding();
+                     window.prompterOnboarding.restartOnboarding();
                 }, 50); // Small delay
             } else {
                 // This is the only case where it might truly be "unavailable"

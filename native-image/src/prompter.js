@@ -826,12 +826,15 @@ class Prompter {
         this.referenceImages = [...images];
         console.log(`Storing ${this.referenceImages.length} reference images for later use`);
         
-        // Remove loading message
-        this.removeLoadingMessage();
+        // Remove loading message - THIS LINE IS THE PROBLEM
+        // this.removeLoadingMessage(); <-- REMOVING THIS PREMATURE CALL
         
         // Generate a personalized confirmation message using the Gemini API
         this.generateConfirmationMessage(prompt, images)
             .then(confirmationMessage => {
+                // Remove loading message now that we have the confirmation
+                this.removeLoadingMessage();
+                
                 // Show the API-generated confirmation message
                 this.addAIMessage(confirmationMessage);
                 
@@ -865,6 +868,9 @@ class Prompter {
             })
             .catch(error => {
                 console.error('Error generating confirmation message:', error);
+                
+                // Remove loading message since we failed to get a confirmation
+                this.removeLoadingMessage();
                 
                 // Fallback to a simple confirmation in case the API call fails
                 const imageMention = images && images.length > 0 ? 
@@ -1236,6 +1242,14 @@ The style should be consistent with other frames in the sequence, with smooth tr
             <div class="prompter-download-ui-container"></div>
             <div class="prompter-export-ui-container"></div>
         `);
+        
+        // Add the animation-plan-message class to the message container for CSS targeting
+        if (messageDiv) {
+            const messageContainer = messageDiv.closest('.prompter-message') || messageDiv.closest('.message');
+            if (messageContainer) {
+                messageContainer.classList.add('animation-plan-message');
+            }
+        }
         
         // Get the frames container
         const framesContainer = messageDiv.querySelector('.prompter-frames-container');
