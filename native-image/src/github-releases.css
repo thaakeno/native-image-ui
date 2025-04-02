@@ -1106,13 +1106,16 @@ body.releases-panel-open::after {
 .profile-link.github-link, 
 .profile-modal-link.github-link {
     position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    border-radius: 10px;
 }
 
 .profile-link.github-link .whats-new-badge,
 .profile-modal-link.github-link .whats-new-badge {
     position: absolute;
-    top: -5px;
-    right: -5px;
+    top: 2px;
+    right: 2px;
     background: #ff2d55;
     color: white;
     font-size: 8px;

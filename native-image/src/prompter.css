@@ -1822,12 +1822,15 @@
     transition: all 0.3s var(--animation-curve);
     border: none;
     color: white;
+    position: relative; /* Needed for pseudo-elements */
+    overflow: hidden;   /* Keep animations contained */
 }
 
 .prompter-toggle-btn svg {
     width: 20px;
     height: 20px;
-    transition: transform 0.3s ease;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    z-index: 2; /* Keep icon above animations */
 }
 
 .prompter-toggle-btn:hover {
@@ -2661,97 +2664,150 @@
 /* Responsive design for mobile */
 @media (max-width: 768px) {
     .prompter-frame-controls {
-        opacity: 0.9;
-        transform: translateY(0);
-        background: rgba(var(--background-tertiary-rgb), 0.85);
+        /* ... existing styles ... */
+        position: absolute; /* Keep controls positioned */
+        top: 8px;
+        right: 8px;
+        background-color: rgba(0, 0, 0, 0.6); /* Ensure visibility */
+        border-radius: 6px;
+        padding: 4px;
+        opacity: 0; /* Keep hidden until hover */
+        transition: opacity 0.2s ease-in-out;
+        z-index: 10; /* Make sure controls are on top */
     }
     
     .frame-control-btn {
+        /* ... existing styles ... */
+        padding: 6px; /* Slightly larger tap target */
         width: 32px;
         height: 32px;
     }
     
     .frame-control-btn svg {
-        width: 16px;
-        height: 16px;
+        /* ... existing styles ... */
+        width: 18px; /* Adjust icon size if needed */
+        height: 18px;
     }
     
     .add-frame-btn {
-        min-height: 100px;
+        /* ... existing styles ... */
+        padding: 12px 16px; /* Adjust padding */
+        font-size: 0.9rem; /* Slightly smaller font */
     }
     
-    /* Make Animation Plan container full width on mobile */
-    /* Target with :has() for modern browsers */
-    .prompter-message:has(.prompter-frames-container),
-    /* Fallback for browsers without :has() support */
-    .prompter-message.animation-plan-message {
-        max-width: 100% !important;
-        width: 100% !important;
-        margin-left: 0 !important;
-        margin-right: 0 !important;
-        padding-left: 12px !important;
-        padding-right: 12px !important;
-        box-sizing: border-box !important;
-    }
-    
-    /* Target the message content directly */
-    .prompter-message:has(.prompter-frames-container) .prompter-message-content,
-    .prompter-message.animation-plan-message .prompter-message-content {
-        max-width: 100% !important;
-        width: 100% !important;
-    }
-    
-    /* Ensure the frames container itself is full width */
-    .prompter-frames-container {
-        width: 100% !important;
-    }
-    
-    /* Animation plan header responsiveness */
-    .animation-plan-header {
-        flex-wrap: wrap;
-    }
-    
-    /* Adjust frame layouts for mobile */
-    .prompter-frame {
-        padding: 12px;
-        /* Ensure the frame takes full width in regular layout */
-        width: 100%;
+    /* --- NEW/MODIFIED STYLES BELOW --- */
+
+    /* Ensure the main message container takes full width */
+    .prompter-message.animation-plan-message, /* Use the specific class */
+    .prompter-message:has(.prompter-frames-container) { /* Keep :has() for modern browsers */
+        padding: 10px 5px; /* Reduce side padding */
         max-width: 100%;
+        width: 100%;
+        box-sizing: border-box; /* Include padding in width */
+    }
+
+    .prompter-message.animation-plan-message .prompter-message-content,
+    .prompter-message:has(.prompter-frames-container) .prompter-message-content {
+        padding: 0; /* Remove padding from inner content */
+    }
+
+    /* Force column layout for the frames container */
+    .prompter-frames-container {
+        display: flex;
+        flex-direction: column; /* Force column layout */
+        gap: 15px; /* Adjust gap between frames */
+        padding: 10px 0; /* Add some padding top/bottom */
+        /* Remove any grid-specific properties here */
+        grid-template-columns: none; 
+    }
+
+    /* Hide the layout toggle button */
+    .prompter-layout-toggle {
+        display: none;
+    }
+
+    .animation-plan-header {
+        padding: 0 10px; /* Adjust header padding */
+    }
+
+    /* Adjust individual frame styling for compactness */
+    .prompter-frame {
+        flex-direction: column; /* Image on top, content below */
+        padding: 8px; /* Further reduce frame padding */
+        gap: 6px; /* Further reduce gap inside frame */
+        /* Ensure it takes full width */
+        width: auto; 
+        max-width: none;
+        margin: 0 5px; /* Add small side margin */
         box-sizing: border-box;
     }
+
+    .prompter-frame-image-side,
+    .prompter-frame-content-side {
+        width: 100%; /* Ensure sides take full width */
+        max-width: 100%;
+    }
     
-    /* Improve grid layout for mobile */
+    .prompter-frame-image-placeholder {
+        height: 110px; /* Reduced height for compactness */
+        min-height: 110px; /* Reduced min-height */
+    }
+
+    .prompter-frame-description {
+        font-size: 0.85rem; /* Slightly smaller description font */
+        max-height: 70px; /* Slightly reduce description height */
+    }
+
+    .prompter-frame-header .prompter-frame-header-text {
+        font-size: 0.9rem; /* Smaller frame title */
+    }
+    
+    /* Remove grid layout overrides as they are not needed */
     .frames-grid-layout .prompter-frames-container {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)) !important;
-        gap: 12px !important;
+       /* These styles are overridden or irrelevant now */
+       /* grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); */
+       /* gap: 10px; */
     }
-    
+
     .frames-grid-layout .prompter-frame {
-        padding: 10px;
-        /* Reset the width for grid layout */
-        width: auto;
+       /* These styles are overridden or irrelevant now */
+       /* padding: 8px; */
+       /* height: auto; */
     }
-    
+
     .frames-grid-layout .prompter-frame-image-placeholder {
-        height: 120px !important; /* Smaller height for mobile */
+       /* These styles are overridden or irrelevant now */
+        /* height: 120px; */
+        /* min-height: 120px; */
     }
-    
-    /* Make frame action buttons more accessible on mobile */
+
     .prompter-frame-actions {
-        flex-wrap: wrap;
-        justify-content: space-around;
-        gap: 8px;
+        /* Adjust button container if needed */
+        padding-top: 8px;
     }
-    
-    /* Make generate all and export buttons stack on mobile */
+
+    /* Adjust padding for main action buttons */
     .prompter-actions {
-        flex-direction: column;
-        gap: 10px;
+        padding: 10px; /* Reduce padding */
+        gap: 8px; /* Reduce gap */
+    }
+
+    .prompter-action-button {
+        padding: 8px 12px; /* Smaller buttons */
+        font-size: 0.85rem;
     }
     
-    .prompter-action-button {
-        width: 100%;
+    /* Adjust toast position for mobile */
+     .prompter-toast-container {
+        bottom: 70px; /* Position above input container */
+        left: 10px;
+        right: 10px;
+        width: auto;
+     }
+
+     .prompter-toast {
+        padding: 10px 15px;
+        font-size: 0.9rem;
     }
 }
 
@@ -3881,7 +3937,7 @@
 }
 @keyframes copiedFlashAnim {
     0% { box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1), 0 0 0 0px rgba(var(--text-accent-rgb), 0.3); }
-    50% { box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1), 0 0 0 5px rgba(var(--text-accent-rgb), 0.1); }
+    50% { box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1), 0 0 0 4px rgba(var(--text-accent-rgb), 0.1); }
     100% { box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1), 0 0 0 0px rgba(var(--text-accent-rgb), 0); }
 }
 
@@ -3960,6 +4016,7 @@
     margin-top: 14px; /* Space above */
     padding-top: 14px; /* Space inside */
     border-top-color: rgba(var(--background-modifier-border-rgb), 0.2); /* Show border */
+    transition-delay: 0s; /* Remove delay */
 }
 
 /* --- Instruction/Tip Box --- */
@@ -4158,7 +4215,7 @@
 }
 
 .prompter-frame-error .error-details .error-raw {
-    font-family: var(--font-mono);
+    font-family: var(--font-monospace);
     font-size: 0.75em;
     background-color: hsla(0, 0%, 0%, 0.1);
     padding: 4px 6px;
@@ -4772,7 +4829,6 @@
 .prompter-error-message .error-details a:hover { text-decoration: underline; }
 
 .prompter-error-message .error-details .error-raw {
-    /* Keep existing raw error styles */
     font-family: var(--font-monospace);
     font-size: 0.75em;
     background-color: hsla(0, 0%, 0%, 0.2);
@@ -5400,8 +5456,8 @@
 .prompter-error-message .error-details p:last-child { margin-bottom: 0; }
 
 .prompter-error-message .error-details strong {
-    color: hsla(0, 10%, 90%, 0.9); /* Slightly less intense */
-    font-weight: 500;
+    color: hsla(0, 10%, 90%, 0.95);
+    font-weight: 600;
 }
 
 .prompter-error-message .error-details a {
@@ -6487,4 +6543,354 @@
 /* ================================ */
 
 /* ... rest of existing code ... */
+
+
+/* --- ADDED: Live GIF Preview Styles --- */
+.prompter-live-gif-preview-container {
+    margin-top: 25px; /* Space above the preview */
+    padding: 20px;
+    background-color: rgba(var(--background-secondary-rgb), 0.4); /* Slightly different background */
+    border-radius: 16px;
+    border: 1px solid rgba(var(--background-modifier-border-rgb), 0.2);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+    max-height: 0; /* Start hidden */
+    overflow: hidden;
+    opacity: 0;
+    transition: max-height 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+                opacity 0.4s ease-out 0.1s,
+                padding 0.5s ease,
+                margin-top 0.5s ease;
+    will-change: max-height, opacity;
+    position: relative; /* For potential absolute positioning inside */
+}
+
+.prompter-live-gif-preview-container.active {
+    max-height: 600px; /* Adjust as needed for max preview size */
+    opacity: 1;
+    padding: 20px;
+    margin-top: 25px;
+}
+
+.live-gif-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(var(--background-modifier-border-rgb), 0.15);
+}
+
+.live-gif-header svg {
+    width: 18px;
+    height: 18px;
+    color: var(--primary-color);
+    flex-shrink: 0;
+}
+
+.live-gif-header.error svg {
+    color: var(--danger-color);
+}
+
+.live-gif-preview-image {
+    display: block;
+    max-width: 100%;
+    max-height: 400px; /* Limit preview height */
+    margin: 0 auto; /* Center the image */
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    background-color: rgba(0, 0, 0, 0.1); /* Placeholder background */
+    object-fit: contain;
+    animation: fadeInPreview 0.5s ease forwards;
+}
+
+@keyframes fadeInPreview {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+.prompter-live-gif-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 150px;
+    text-align: center;
+    color: var(--text-secondary);
+}
+
+.prompter-live-gif-loading .prompter-loading-animation {
+    margin-bottom: 15px;
+    transform: scale(1.2); /* Make loading dots a bit bigger */
+}
+
+.prompter-live-gif-loading .loading-text {
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.prompter-live-gif-preview-container.error-state {
+     border-color: rgba(var(--danger-color-rgb, 240, 71, 71), 0.3);
+     background-color: rgba(var(--danger-color-rgb, 240, 71, 71), 0.05);
+}
+
+.preview-error-text {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    text-align: center;
+    padding: 10px 0;
+}
+
+[data-theme="light"] .prompter-live-gif-preview-container {
+    background-color: rgba(var(--background-secondary-rgb), 0.7);
+    border-color: rgba(var(--background-modifier-border-rgb), 0.3);
+}
+
+[data-theme="light"] .live-gif-header {
+    color: var(--text-primary);
+    border-bottom-color: rgba(var(--background-modifier-border-rgb), 0.3);
+}
+
+[data-theme="light"] .preview-error-text {
+    color: var(--text-secondary);
+}
+/* --- END: Live GIF Preview Styles --- */
+
+/* ... rest of the styles ... */
+
+/* In-between frame button styles */
+.frame-insert-between-wrapper {
+    position: relative;
+    width: 100%;
+    height: 6px;
+    margin: 5px 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1;
+}
+
+.frame-insert-between {
+    position: relative;
+    height: 3px;
+    width: 90%;
+    background: linear-gradient(90deg, 
+        transparent 0%, 
+        rgba(var(--primary-color-rgb), 0.1) 20%, 
+        rgba(var(--primary-color-rgb), 0.1) 80%, 
+        transparent 100%);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    overflow: visible;
+}
+
+.frame-insert-between:hover {
+    height: 32px;
+    background: linear-gradient(90deg, 
+        transparent 0%, 
+        rgba(var(--primary-color-rgb), 0.2) 20%, 
+        rgba(var(--primary-color-rgb), 0.2) 80%, 
+        transparent 100%);
+    box-shadow: 0 2px 10px rgba(var(--primary-color-rgb), 0.1);
+}
+
+.frame-insert-between:active {
+    background: linear-gradient(90deg, 
+        transparent 0%, 
+        rgba(var(--primary-color-rgb), 0.3) 20%, 
+        rgba(var(--primary-color-rgb), 0.3) 80%, 
+        transparent 100%);
+    transform: translateY(1px);
+}
+
+.frame-insert-between .insert-btn-content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.8);
+    opacity: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--primary-color);
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+    padding: 2px 10px;
+    border-radius: 16px;
+    background-color: var(--background-primary);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    pointer-events: none;
+    transition: all 0.2s ease;
+}
+
+.frame-insert-between:hover .insert-btn-content {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+    pointer-events: auto;
+}
+
+.frame-insert-between .insert-btn-content svg {
+    width: 14px;
+    height: 14px;
+    stroke-width: 2;
+    color: var(--primary-color);
+    transition: transform 0.2s ease;
+}
+
+.frame-insert-between:hover .insert-btn-content svg {
+    transform: rotate(90deg);
+}
+
+.frame-insert-between::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: rgba(var(--primary-color-rgb), 0);
+    transform: translate(-50%, -50%) scale(0);
+    transition: all 0.3s ease;
+    z-index: -1;
+}
+
+.frame-insert-between:hover::before {
+    transform: translate(-50%, -50%) scale(1);
+    background-color: rgba(var(--primary-color-rgb), 0.05);
+}
+
+/* Loading state */
+.frame-insert-between.loading {
+    pointer-events: none;
+    background: linear-gradient(90deg, 
+        transparent 0%, 
+        rgba(var(--primary-color-rgb), 0.2) 20%, 
+        rgba(var(--primary-color-rgb), 0.2) 80%, 
+        transparent 100%);
+    height: 32px;
+}
+
+.frame-insert-between.loading::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, 
+        transparent 0%, 
+        rgba(var(--primary-color-rgb), 0.1) 25%, 
+        rgba(var(--primary-color-rgb), 0.2) 50%, 
+        rgba(var(--primary-color-rgb), 0.1) 75%, 
+        transparent 100%);
+    background-size: 200% 100%;
+    animation: insertBetweenLoading 1.5s infinite linear;
+}
+
+.frame-insert-between.loading .insert-btn-content {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+}
+
+.frame-insert-between.loading .insert-btn-content svg {
+    animation: spin 1.5s infinite linear;
+}
+
+.frame-insert-between.loading .insert-btn-content span {
+    content: 'Creating...';
+}
+
+.frame-insert-between.loading .insert-btn-content span::after {
+    content: 'Creating...';
+    position: absolute;
+    left: 30px;
+}
+
+@keyframes insertBetweenLoading {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* Light theme styles */
+[data-theme="light"] .frame-insert-between {
+    background: linear-gradient(90deg, 
+        transparent 0%, 
+        rgba(var(--primary-color-rgb), 0.15) 20%, 
+        rgba(var(--primary-color-rgb), 0.15) 80%, 
+        transparent 100%);
+}
+
+[data-theme="light"] .frame-insert-between:hover {
+    background: linear-gradient(90deg, 
+        transparent 0%, 
+        rgba(var(--primary-color-rgb), 0.25) 20%, 
+        rgba(var(--primary-color-rgb), 0.25) 80%, 
+        transparent 100%);
+}
+
+[data-theme="light"] .frame-insert-between .insert-btn-content {
+    background-color: var(--background-primary);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    color: var(--primary-color);
+}
+
+[data-tactile="true"] .frame-insert-between {
+    background: linear-gradient(90deg, 
+        transparent 0%, 
+        rgba(var(--text-accent-rgb), 0.15) 20%, 
+        rgba(var(--text-accent-rgb), 0.15) 80%, 
+        transparent 100%);
+}
+
+[data-tactile="true"] .frame-insert-between:hover {
+    background: linear-gradient(90deg, 
+        transparent 0%, 
+        rgba(var(--text-accent-rgb), 0.25) 20%, 
+        rgba(var(--text-accent-rgb), 0.25) 80%, 
+        transparent 100%);
+}
+
+[data-tactile="true"] .frame-insert-between .insert-btn-content {
+    background-color: var(--background-primary);
+    color: var(--text-accent);
+}
+
+[data-tactile="true"] .frame-insert-between .insert-btn-content svg {
+    color: var(--text-accent);
+}
+
+/* Mobile styles */
+@media (max-width: 768px) {
+    .frame-insert-between-wrapper {
+        margin: 3px 0;
+    }
+    
+    .frame-insert-between {
+        width: 98%;
+    }
+    
+    .frame-insert-between:hover {
+        height: 28px;
+    }
+    
+    .frame-insert-between .insert-btn-content {
+        font-size: 11px;
+        padding: 2px 8px;
+        gap: 4px;
+    }
+    
+    .frame-insert-between .insert-btn-content svg {
+        width: 12px;
+        height: 12px;
+    }
+}
+
+.frames-grid-layout .frame-insert-between-wrapper {
+    display: none; /* Hide completely in grid layout */
+}
 

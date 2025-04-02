@@ -13,6 +13,7 @@ class GitHubReleases {
         this.initialized = false;
         this.lastChecked = null;
         this.lastVisited = parseInt(localStorage.getItem('github_releases_last_visited') || '0');
+        this.triggerOnboardingOnClose = false;
         
         // Create UI elements
         this.createUI();
@@ -38,30 +39,41 @@ class GitHubReleases {
             this.lastChecked = Date.now();
             localStorage.setItem('github_releases_last_checked', this.lastChecked.toString());
             
-            // Create event listeners - moved this after fetching so we have proper data
+            // Create event listeners
             this.setupEventListeners();
             
-            // Check if this is a first-time user (no onboarding completed)
+            // Check if this is a first-time user
             const isFirstTimeUser = localStorage.getItem('onboarding_completed') !== 'true';
             
-            // Check if we have new releases since last visited
-            // Get the timestamp from localStorage directly to ensure we have the latest value
+            // Get the timestamp from localStorage directly
             const lastVisitedTimestamp = parseInt(localStorage.getItem('github_releases_last_visited') || '0');
             
             const hasNewReleases = this.releases.some(release => 
                 release.publishedTimestamp > lastVisitedTimestamp
             );
             
-            // Show notification if we have new releases
+            // Show notification badge if there are new releases (always check this)
             if (hasNewReleases) {
                 this.showUpdateNotification();
                 this.showWhatsNewBadges();
             }
-                
-            // Show panel on startup if:
-            // 1. There are new releases AND showOnStartup is enabled, OR
-            // 2. This is a first-time user 
-            if ((this.options.showOnStartup && hasNewReleases) || isFirstTimeUser) {
+            
+            // ---MODIFIED LOGIC FOR SHOWING PANEL---
+            let shouldShowPanel = false;
+            if (isFirstTimeUser) {
+                // First-time user: Show the panel so they see the latest info & set flag for onboarding
+                shouldShowPanel = true;
+                this.triggerOnboardingOnClose = true;
+                this.logDebug('First time user, scheduling panel show and onboarding trigger.');
+            } else if (this.options.showOnStartup && hasNewReleases) {
+                // Returning user: Only show if enabled and there are *new* releases
+                shouldShowPanel = true;
+                this.triggerOnboardingOnClose = false; // Ensure flag is false for returning users
+                this.logDebug('Returning user with new releases, scheduling panel show.');
+            }
+            // ---END MODIFIED LOGIC---
+            
+            if (shouldShowPanel) {
                 setTimeout(() => {
                     this.showReleasePanel();
                         
@@ -70,7 +82,7 @@ class GitHubReleases {
                     if (showOnlyNew) {
                         this.applyFilters();
                     }
-                }, 1000);
+                }, 1000); // Delay showing panel slightly
             }
             
             // Set up auto-updates while app is running
@@ -84,6 +96,15 @@ class GitHubReleases {
             // If we have cached releases, still try to use those
             if (this.releases.length === 0) {
                 this.loadFromCache();
+                 // If cache loaded, render them
+                 if (this.releases.length > 0) {
+                     this.renderReleases();
+                     // Still apply filters if needed after loading from cache
+                     const showOnlyNew = localStorage.getItem('github_releases_show_only_new') === 'true';
+                     if (showOnlyNew) {
+                         this.applyFilters();
+                     }
+                 }
             }
         }
     }
@@ -364,32 +385,31 @@ class GitHubReleases {
     closeReleasePanel() {
         this.panel.classList.remove('visible');
         document.body.classList.remove('releases-panel-open');
-        
-        // ALWAYS mark releases as truly visited when closing the panel
-        // Override the "show only new" checkbox check that's in markReleasesAsVisited
-        
-        // Force update the last visited timestamp
-        this.lastVisited = Date.now();
-        localStorage.setItem('github_releases_last_visited', this.lastVisited.toString());
-        
-        // Mark all releases as seen in the data
-        this.releases.forEach(release => {
-            release.isNew = false;
-        });
-        
-        // Store the updated releases
-        this.saveToCache();
-        
-        // Clear notifications
-        this.clearUpdateNotification();
 
-        // Check if user is a first-time visitor and trigger onboarding
-        setTimeout(() => {
-            if (window.prompterOnboarding && window.prompterOnboarding.isFirstTimeUser) {
-                console.log('First-time user detected, starting onboarding after GitHub releases close');
-                window.prompterOnboarding.startOnboarding();
-            }
-        }, 500); // Small delay after panel closes
+        // Mark releases as visited when panel is closed
+        this.markReleasesAsVisited(); // This already handles updating lastVisited and clearing badges
+
+        // ---MODIFIED LOGIC FOR ONBOARDING---
+        // Check if onboarding should be triggered *after* closing this panel
+        if (this.triggerOnboardingOnClose) {
+             this.logDebug('Panel closed, attempting to trigger onboarding.');
+             // Use a timeout to ensure panel closing animation completes
+             setTimeout(() => {
+                // Double-check the onboarding instance and first-time status *just before* starting
+                if (window.prompterOnboarding && localStorage.getItem('onboarding_completed') !== 'true') {
+                     this.logDebug('Starting onboarding.');
+                     window.prompterOnboarding.startOnboarding();
+                 } else {
+                     this.logDebug('Onboarding condition no longer met (already completed or instance missing).');
+                 }
+             }, 300); // Delay matches typical animation time
+
+             // IMPORTANT: Reset the flag so it doesn't trigger again
+             this.triggerOnboardingOnClose = false;
+        } else {
+            this.logDebug('Panel closed, onboarding trigger not set.');
+        }
+         // ---END MODIFIED LOGIC---
     }
     
     showUpdateNotification() {

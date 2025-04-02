@@ -31,6 +31,8 @@ class Prompter {
 
     init() {
         console.log('Animation Prompter initializing...');
+        this.prompterButton = null; // Store button reference
+        this.prompterButtonClickListener = null; // Store the current listener
         
         // Check if prompter is enabled in localStorage
         const prompterSetting = localStorage.getItem('prompterEnabled');
@@ -94,29 +96,18 @@ class Prompter {
         }
         
         // Create the button
-        const button = document.createElement('button');
-        button.className = 'prompter-toggle-btn';
-        button.innerHTML = `
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="10"></circle>
-                <polygon points="10 8 16 12 10 16 10 8"></polygon>
-            </svg>
-            <span class="prompter-btn-tooltip">Animation Prompter</span>
-        `;
-        button.setAttribute('title', 'Toggle Animation Prompter');
+        this.prompterButton = document.createElement('button'); // Store reference
+        this.prompterButton.className = 'prompter-toggle-btn';
+        this.prompterButton.setAttribute('title', 'Toggle Animation Prompter');
+        this.updatePrompterButtonState('idle'); // Set initial icon and listener
         
         // Add it to the input area (before the send button)
         const sendButton = inputWrapper.querySelector('#send-button');
         if (sendButton) {
-            inputWrapper.insertBefore(button, sendButton);
+            inputWrapper.insertBefore(this.prompterButton, sendButton);
         } else {
-            inputWrapper.appendChild(button);
+            inputWrapper.appendChild(this.prompterButton);
         }
-        
-        // Event listener to toggle prompter conversation
-        button.addEventListener('click', () => {
-            this.togglePrompterConversation();
-        });
     }
 
     removePrompterButton() {
@@ -458,6 +449,12 @@ class Prompter {
     
     // New method to toggle the prompter on/off
     togglePrompterConversation() {
+        // Clear any existing listener before toggling state
+        if (this.prompterButton && this.prompterButtonClickListener) {
+            this.prompterButton.removeEventListener('click', this.prompterButtonClickListener);
+            this.prompterButtonClickListener = null;
+        }
+
         if (this.isActive) {
             // Turn it off
             this.isActive = false;
@@ -467,19 +464,34 @@ class Prompter {
             this.updateInputPlaceholder(false);
             this.addStatusLabel(false);
             
-            // Update button state
-            const button = document.querySelector('.prompter-toggle-btn');
-            if (button) {
-                button.classList.remove('active');
-                // Add ripple effect on toggle
-                this.addButtonRipple(button);
-            }
+            // Update button state (sets icon and adds toggle listener)
+            this.updatePrompterButtonState('idle');
             
             // Add system message to explain deactivation
             this.showSystemMessage("Animation Prompter has been deactivated. You're now back to normal chat mode.");
         } else {
-            // Turn it on - call the start method
-            this.startPrompterConversation();
+            // Turn it on
+            this.isActive = true;
+            console.log('DEBUG: Prompter is now active');
+            
+            // Update the input placeholder text and UI
+            this.updateInputPlaceholder(true);
+            this.addStatusLabel(true);
+            
+            // Add visual feedback for activation
+            this.triggerInputShimmer();
+
+            // Update button state (sets icon and adds toggle listener)
+            this.updatePrompterButtonState('idle'); // Still idle until generation starts
+
+            // Add system message to explain the prompter
+            this.showSystemMessage("You're now talking to the Animation Prompter. I'll help you create animated sequences frame by frame.");
+
+            // Only show welcome message if it hasn't been shown before
+            if (!this.welcomeMessageShown) {
+                this.addEnhancedWelcomeMessage();
+                this.welcomeMessageShown = true;
+            }
         }
     }
     
@@ -908,7 +920,9 @@ class Prompter {
             if (!window.app || !window.app.model) {
                 return `Yeah, yeah. An animation about "${prompt}". Let's see what I can do with this...`;
             }
-            
+
+            const parts = []; // Initialize an array for prompt parts
+
             // Process any images for the confirmation message
             const imageData = [];
             if (images && images.length > 0) {
@@ -926,41 +940,46 @@ class Prompter {
                     }
                 }
             }
-            
-            // Create image description text if images are present
-            let imageContext = "";
-            if (imageData.length > 0) {
-                imageContext = `The user has also uploaded ${imageData.length === 1 ? 'an image' : `${imageData.length} images`} as reference material. Briefly describe what you see in the image(s) in your own sarcastic way.`;
-            }
-            
-            // Create a structured prompt for the confirmation message
-            const completionPrompt = {
-                contents: [{
-                    role: 'user',
-                    parts: [
-                        {
-                            text: `You are a slightly jaded, sarcastic animation director who's seen it all. You've worked in the industry for decades and have a dry, sometimes biting wit. You're competent and know it. You see the truth in ideas - acknowledge good ones with a hint of surprise, and approach mediocre ones with skepticism but determination to make them work. You're not mean or rude - just straight-talking with an edge.
+
+            // --- MODIFIED: Conditionally build the prompt text ---
+            let basePromptText = `You are a slightly jaded, sarcastic animation director who's seen it all. You've worked in the industry for decades and have a dry, sometimes biting wit. You're competent and know it. You see the truth in ideas - acknowledge good ones with a hint of surprise, and approach mediocre ones with skepticism but determination to make them work. You're not mean or rude - just straight-talking with an edge.
 
 A user has requested an animation with this description: "${prompt}"
-${imageContext}
 
 Write a brief confirmation message acknowledging their request. Your response must:
 1. Be concise (2-3 sentences maximum)
 2. Have an unmistakable sarcastic tone without being cruel
-3. If their idea is genuinely interesting or creative, acknowledge it with a hint of impressed surprise 
+3. If their idea is genuinely interesting or creative, acknowledge it with a hint of impressed surprise
 4. If their idea is basic/generic, subtly point that out but still convey you'll make it work
-5. If they've provided reference images, briefly describe what you see in a slightly judgmental but insightful way
-6. Never use corporate buzzwords, exclamation points, or overly positive language
-7. Use markdown formatting (bold or italic) very sparingly and only for emphasis on sarcastic points
-8. Sound like an actual person with years of expertise who doesn't need to fake enthusiasm
-9. Never say anything overtly negative or mean - your sarcasm should be witty, not hateful
-10. Never use cringe-worthy phrases or sound like you're trying too hard to be cool
+5. Never use corporate buzzwords, exclamation points, or overly positive language
+6. Use markdown formatting (bold or italic) very sparingly and only for emphasis on sarcastic points
+7. Sound like an actual person with years of expertise who doesn't need to fake enthusiasm
+8. Never say anything overtly negative or mean - your sarcasm should be witty, not hateful
+9. Avoid cringe phrases or sounding like you're trying too hard to be cool`;
 
-Write like someone who's too experienced to sugar-coat things but still takes pride in their craft.`
-                        },
-                        // Include any reference images
-                        ...imageData
-                    ]
+            // Add the base prompt text first
+            parts.push({ text: basePromptText });
+
+            // Add image-specific instructions and image data ONLY if images exist
+            if (imageData.length > 0) {
+                parts.push({
+                    text: `\n\nThe user has also uploaded ${imageData.length === 1 ? 'an image' : `${imageData.length} images`} as reference material. Briefly describe what you see in the image(s) in your own sarcastic way.`
+                });
+                // Add the actual image data
+                imageData.forEach(imgData => parts.push(imgData));
+            }
+
+            // Add final instructions
+            parts.push({
+                text: `\n\nWrite like someone who's too experienced to sugar-coat things but still takes pride in their craft.`
+            });
+            // --- END MODIFIED ---
+
+            // Create a structured prompt for the confirmation message
+            const completionPrompt = {
+                contents: [{
+                    role: 'user',
+                    parts: parts // Use the constructed parts array
                 }],
                 generationConfig: {
                     temperature: 0.8,
@@ -1241,6 +1260,7 @@ The style should be consistent with other frames in the sequence, with smooth tr
             </div>
             <div class="prompter-download-ui-container"></div>
             <div class="prompter-export-ui-container"></div>
+            <div class="prompter-live-gif-preview-container"></div>
         `);
         
         // Add the animation-plan-message class to the message container for CSS targeting
@@ -1266,6 +1286,31 @@ The style should be consistent with other frames in the sequence, with smooth tr
                 // Ensure framesContainer and its parent exist before proceeding
                 if (!framesContainer || !framesContainer.parentElement) return;
 
+                // Remember scroll position and the active frame index
+                const scrollTop = framesContainer.scrollTop;
+                const visibleFrames = document.querySelectorAll('.prompter-frame');
+                let activeFrameIndex = 0;
+                
+                // Find which frame is most visible in the current viewport
+                if (visibleFrames.length > 0) {
+                    const containerRect = framesContainer.getBoundingClientRect();
+                    let bestVisibleArea = 0;
+                    
+                    visibleFrames.forEach((frame, idx) => {
+                        const frameRect = frame.getBoundingClientRect();
+                        const visibleTop = Math.max(frameRect.top, containerRect.top);
+                        const visibleBottom = Math.min(frameRect.bottom, containerRect.bottom);
+                        
+                        if (visibleBottom > visibleTop) {
+                            const visibleArea = visibleBottom - visibleTop;
+                            if (visibleArea > bestVisibleArea) {
+                                bestVisibleArea = visibleArea;
+                                activeFrameIndex = idx;
+                            }
+                        }
+                    });
+                }
+
                 const isGridLayout = framesContainer.parentElement.classList.contains('frames-grid-layout');
                 const layoutToggleSpan = layoutToggle.querySelector('span');
                 const layoutToggleSvg = layoutToggle.querySelector('svg');
@@ -1288,6 +1333,20 @@ The style should be consistent with other frames in the sequence, with smooth tr
                         <rect x="3" y="17" width="18" height="4"></rect>
                     `;
                 }
+                
+                // Re-render the frames to properly handle in-between buttons
+                this.refreshAnimationPlan();
+                
+                // After re-rendering, scroll to the previously visible frame
+                setTimeout(() => {
+                    const updatedFrames = document.querySelectorAll('.prompter-frame');
+                    if (updatedFrames.length > 0 && activeFrameIndex < updatedFrames.length) {
+                        updatedFrames[activeFrameIndex].scrollIntoView({ 
+                            behavior: 'auto', 
+                            block: 'nearest' 
+                        });
+                    }
+                }, 50);
             });
         }
         
@@ -1300,9 +1359,10 @@ The style should be consistent with other frames in the sequence, with smooth tr
                 const isRegenerateAction = generateAllBtn.classList.contains('regenerate');
 
                 if (isRegenerateAction) {
-                     if (!confirm("This will regenerate all frames, potentially overwriting existing ones. Are you sure?")) {
-                         return;
-                     }
+                     // {{ edit }} Simplify regeneration logic if needed (removed confirm for now)
+                     // if (!confirm("This will regenerate all frames, potentially overwriting existing ones. Are you sure?")) {
+                     //     return;
+                     // }
                      this.currentPlan.frames.forEach(frame => {
                          frame.status = 'pending';
                          frame.imageUrls = [];
@@ -1310,6 +1370,7 @@ The style should be consistent with other frames in the sequence, with smooth tr
                          frame.errorMessage = null;
                      });
                      this.refreshAnimationPlan();
+                     this.hideLiveGifPreview(); // Hide preview when regenerating all
                 }
                 this.generateAllFrames();
             });
@@ -1319,7 +1380,25 @@ The style should be consistent with other frames in the sequence, with smooth tr
         const exportBtn = messageDiv.querySelector('.prompter-export');
         if (exportBtn) {
             exportBtn.addEventListener('click', () => {
+                // Check if download UI is open and close it
+                const downloadUI = document.querySelector('.prompter-download-ui.active');
+                if (downloadUI) {
+                    // Hide download UI first
+                    downloadUI.classList.remove('active');
+                    setTimeout(() => {
+                        const downloadContainer = downloadUI.closest('.prompter-download-ui-container');
+                        if (downloadContainer) {
+                            downloadContainer.innerHTML = '';
+                        }
+                        // Now proceed with export
+                        this.hideLiveGifPreview();
                 this.exportAsGif();
+                    }, 300); // Wait for animation to complete
+                } else {
+                    // Direct export if download UI wasn't active
+                    this.hideLiveGifPreview();
+                    this.exportAsGif();
+                }
             });
         }
 
@@ -1327,6 +1406,8 @@ The style should be consistent with other frames in the sequence, with smooth tr
         const downloadImagesBtn = messageDiv.querySelector('.prompter-download-images');
         if (downloadImagesBtn) {
             downloadImagesBtn.addEventListener('click', () => {
+                // Hide the live preview when downloading images
+                this.hideLiveGifPreview();
                 this.showImageDownloadUI();
             });
         }
@@ -1626,6 +1707,13 @@ The style should be consistent with other frames in the sequence, with smooth tr
                     // Optional: Add a subtle confirmation
                     item.classList.add('confirmed');
                     setTimeout(() => item.classList.remove('confirmed'), 500);
+
+                    // --- ADDED: Trigger GIF preview update if all frames are complete ---
+                    const allFramesComplete = this.currentPlan.frames.every(f => f.status === 'complete');
+                    if (allFramesComplete) {
+                        this.updateLiveGifPreview();
+                    }
+                    // --- END ADDED ---
                 }
             });
         });
@@ -2021,8 +2109,10 @@ The style should be consistent with other frames in the sequence, with smooth tr
 
         const { displayMessage, detailsHTML, isQuotaError } = this._parseErrorMessage(errorMessage);
 
-        if (this.isGeneratingAllFrames && (isQuotaError || !frame)) {
+        // --- MODIFIED: Check if generation should stop ---
+        if (this.isGeneratingAllFrames) { // Only stop if it was running
             this.isGeneratingAllFrames = false;
+            this.updatePrompterButtonState('idle'); // Change button back
             this.showSystemMessage("Generation stopped due to an error. Please check the details and try again.");
             
             // Enable the generate all button again
@@ -2039,11 +2129,10 @@ The style should be consistent with other frames in the sequence, with smooth tr
                 }
             }
         }
+        // --- END MODIFIED ---
         
-        // --- MODIFICATION START: Ensure UI updates correctly for the error state ---
         // Update UI to show error state (this handles removing .generating class and adding .error)
         this.refreshSingleFrameUI(index);
-        // --- MODIFICATION END ---
 
         // Check if we need to enable the export button
         this.checkAllFramesComplete();
@@ -2113,8 +2202,16 @@ The style should be consistent with other frames in the sequence, with smooth tr
         const allStrictlyComplete = this.currentPlan.frames.every(frame => frame.status === 'complete');
         const anyComplete = this.currentPlan.frames.some(frame => frame.status === 'complete'); // Check if at least one is complete
         const completedCount = this.currentPlan.frames.filter(f => f.status === 'complete').length;
+        const minFramesForGif = 2;
 
-        // --- MODIFIED: Update "Generate All" button state ---
+        // --- MODIFIED: Update prompter button state if generation finished ---
+        if (this.isGeneratingAllFrames && allDoneOrError) {
+            this.isGeneratingAllFrames = false;
+            this.updatePrompterButtonState('idle'); // Generation sequence ended
+        }
+        // --- END MODIFIED ---
+
+        // Update "Generate All" button state
         const generateAllBtn = document.querySelector('.prompter-generate-all');
         if (generateAllBtn) {
             if (this.isGeneratingAllFrames) {
@@ -2163,7 +2260,7 @@ The style should be consistent with other frames in the sequence, with smooth tr
 
         // Add completion message only when all are strictly complete and message not shown
         if (allStrictlyComplete && this.currentPlan.frameCount > 0 && !this.completionMessageShown) {
-            this.isGeneratingAllFrames = false; // Ensure flag is off
+            // this.isGeneratingAllFrames = false; // Already handled above
             this.completionMessageShown = true;
             
             this.generateCompletionMessage().then(completionMessage => {
@@ -2178,6 +2275,14 @@ The style should be consistent with other frames in the sequence, with smooth tr
         const downloadImagesBtn = document.querySelector('.prompter-download-images');
         if (downloadImagesBtn) {
             downloadImagesBtn.disabled = !anyComplete; // Enable if at least one frame is complete
+        }
+        // --- END ADDED ---
+
+        // --- ADDED: Live GIF Preview Logic ---
+        if (allStrictlyComplete && completedCount >= minFramesForGif) {
+            this.updateLiveGifPreview(); // Show or update the preview
+        } else {
+            this.hideLiveGifPreview(); // Hide the preview if not all frames are complete or not enough frames
         }
         // --- END ADDED ---
     }
@@ -2195,8 +2300,12 @@ The style should be consistent with other frames in the sequence, with smooth tr
         
         // Set flag that we're generating all frames sequentially
         this.isGeneratingAllFrames = true;
+        // --- ADDED: Update prompter button state ---
+        this.updatePrompterButtonState('generating');
+        // --- END ADDED ---
         
-        // --- MODIFIED: Reset status for frames that are 'error' or 'pending' before starting ---
+
+        // Reset status for frames that are 'error' or 'pending' before starting
         let firstFrameToGenerate = -1;
         this.currentPlan.frames.forEach((frame, index) => {
             // Only reset if it's not already complete
@@ -2213,21 +2322,19 @@ The style should be consistent with other frames in the sequence, with smooth tr
              // All frames were already complete
              console.log("All frames are already generated.");
              this.isGeneratingAllFrames = false;
+             // --- ADDED: Update prompter button state ---
+             this.updatePrompterButtonState('idle');
+             // --- END ADDED ---
              this.checkAllFramesComplete(); // Update button to "Regenerate All"
              this.showSystemMessage("All frames were already generated. Click 'Regenerate All Frames' if you want to create them again.");
              return;
         }
-        // --- END MODIFIED ---
 
         // Refresh UI for potentially reset frames
         this.refreshAnimationPlan();
 
-        // Update the button state immediately to show "Generating..."
+        // Update the main "Generate All" button state immediately to show "Generating..."
         this.checkAllFramesComplete();
-
-        // --- REMOVED Scroll logic from here ---
-        // const firstFrameElement = document.querySelector(`.prompter-frame[data-index="${firstFrameToGenerate}"]`);
-        // if (firstFrameElement) { ... scroll logic ... }
 
         // Start with the first frame that needs generation
         // The scroll will now happen INSIDE generateFrame
@@ -2298,19 +2405,43 @@ The style should be consistent with other frames in the sequence, with smooth tr
             return;
         }
         
-        // --- MODIFICATION START ---
-        // Instead of generating message and creating GIF directly, show the interactive UI
+        // Make sure live preview remains hidden when showing export UI
+        this.hideLiveGifPreview();
+        
+        // Show the interactive UI
         this.showGifExportUI(frameImages);
-        // --- MODIFICATION END ---
     }
 
     // --- NEW METHOD: Show Interactive GIF Export UI ---
     showGifExportUI(frameImages) {
-        // Find the message container holding the animation plan
+        // --- ADDED: Check and hide download UI first ---
+        const downloadUI = document.querySelector('.prompter-download-ui.active');
+        if (downloadUI) {
+            const downloadContainer = downloadUI.closest('.prompter-download-ui-container');
+            if (downloadContainer) {
+                downloadUI.classList.remove('active');
+                setTimeout(() => downloadContainer.innerHTML = '', 300); // Clear after animation
+            }
+            // Wait a bit for the download UI to start closing before showing export UI
+            setTimeout(() => {
+                this._createAndShowExportUI(frameImages);
+            }, 100); // Small delay
+            return; // Stop here, let the timeout handle showing the UI
+        }
+        // --- END ADDED ---
+
+        // Original logic moved to a helper function
+        this._createAndShowExportUI(frameImages);
+    }
+
+    // --- ADDED: Helper function for creating/showing export UI ---
+    _createAndShowExportUI(frameImages) {
+        // Ensure live preview is hidden when export UI is active
+        this.hideLiveGifPreview();
+
         const planMessage = document.querySelector('.prompter-frames-container')?.closest('.prompter-message');
         if (!planMessage) return;
 
-        // Find or create a dedicated container for the export UI within the message
         let exportUIContainer = planMessage.querySelector('.prompter-export-ui-container');
         if (!exportUIContainer) {
             exportUIContainer = document.createElement('div');
@@ -2401,7 +2532,11 @@ The style should be consistent with other frames in the sequence, with smooth tr
         cancelButton.addEventListener('click', () => {
             uiElement.classList.remove('active');
             // Optionally remove the container after animation
-            setTimeout(() => exportUIContainer.innerHTML = '', 300);
+            setTimeout(() => {
+                exportUIContainer.innerHTML = '';
+                // Check if we should restore the live preview
+                this.restoreLivePreviewIfNeeded();
+            }, 300);
         });
 
         createButton.addEventListener('click', () => {
@@ -2526,7 +2661,11 @@ The style should be consistent with other frames in the sequence, with smooth tr
 
         closeBtn.addEventListener('click', () => {
              uiContainer.querySelector('.prompter-export-ui').classList.remove('active');
-             setTimeout(() => uiContainer.innerHTML = '', 300);
+             setTimeout(() => {
+                uiContainer.innerHTML = '';
+                // Check if we should restore the live preview
+                this.restoreLivePreviewIfNeeded();
+             }, 300);
         });
     }
 
@@ -3413,15 +3552,46 @@ Only return the JSON structure without additional text.`
         
         existingContainer.innerHTML = '';
         
-        // Re-add all frames
+        // Re-add all frames with in-between dividers
         this.currentPlan.frames.forEach((frame, index) => {
+            // Add in-between divider before this frame (except for the first frame)
+            if (index > 0) {
+                const prevIndex = index - 1;
+                const inBetweenDivider = document.createElement('div');
+                inBetweenDivider.className = 'frame-insert-between-wrapper';
+                inBetweenDivider.innerHTML = `
+                    <div class="frame-insert-between" data-prev-index="${prevIndex}" data-next-index="${index}">
+                        <div class="insert-btn-content">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10" />
+                                <line x1="12" y1="8" x2="12" y2="16" />
+                                <line x1="8" y1="12" x2="16" y2="12" />
+                            </svg>
+                            <span>Insert Frame</span>
+                        </div>
+                    </div>
+                `;
+                existingContainer.appendChild(inBetweenDivider);
+                
+                // Add event listener to in-between button
+                const inBetweenBtn = inBetweenDivider.querySelector('.frame-insert-between');
+                if (inBetweenBtn) {
+                    inBetweenBtn.addEventListener('click', () => {
+                        const prevIdx = parseInt(inBetweenBtn.dataset.prevIndex);
+                        const nextIdx = parseInt(inBetweenBtn.dataset.nextIndex);
+                        this.addInBetweenFrame(prevIdx, nextIdx);
+                    });
+                }
+            }
+
+            // Create and add the frame element (existing code)
             const frameElement = document.createElement('div');
             frameElement.className = `prompter-frame ${frame.status === 'generating' ? 'generating' : ''} ${frame.status === 'error' ? 'error' : ''}`;
             frameElement.dataset.index = index;
             
+            // ... (rest of frame creation code remains unchanged) ...
             let actionButtonsHTML = '';
             if (frame.status === 'complete' && frame.imageUrls.length) {
-                // --- MODIFIED: Regenerate button icon and class ---
                 actionButtonsHTML = `
                     <button class="prompter-frame-button prompter-edit-btn" data-index="${index}">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -3436,7 +3606,6 @@ Only return the JSON structure without additional text.`
                         </svg>
                         <span>Regenerate</span>
                     </button>`;
-                // --- END MODIFIED ---
             } else if (frame.status === 'generating') {
                  actionButtonsHTML = `
                     <button class="prompter-frame-button generating" data-index="${index}" disabled>
@@ -3466,7 +3635,6 @@ Only return the JSON structure without additional text.`
                     </button>`;
             }
 
-            // ... (determine placeholderContent - remains the same) ...
             let placeholderContent = '';
             if (frame.status === 'complete' && frame.imageUrls.length) {
                 placeholderContent = `
@@ -3503,7 +3671,6 @@ Only return the JSON structure without additional text.`
                     </div>`;
             }
 
-            // ... (set frameElement.innerHTML - remains the same) ...
             frameElement.innerHTML = `
                 <div class="prompter-frame-controls">
                     <button class="frame-control-btn frame-move-up-btn" title="Move Up" data-index="${index}" ${index === 0 ? 'disabled' : ''}>
@@ -3556,7 +3723,6 @@ Only return the JSON structure without additional text.`
                 </div>
             `;
             
-            // ... (append frameElement, trigger animation, attach listeners) ...
             existingContainer.appendChild(frameElement);
             
             if (frame.status === 'generating') {
@@ -3566,7 +3732,7 @@ Only return the JSON structure without additional text.`
             this.attachFrameEventListeners(frameElement);
         });
         
-        // ... (add "Add Frame" button) ...
+        // Add "Add Frame" button
         const addFrameButton = document.createElement('div');
         addFrameButton.className = 'add-frame-btn';
         addFrameButton.innerHTML = `
@@ -3585,7 +3751,7 @@ Only return the JSON structure without additional text.`
             this.addNewFrame();
         });
         
-        // ... (update export button status) ...
+        // Update export button status
         const exportBtn = document.querySelector('.prompter-export');
         if (exportBtn) {
             const allFramesGenerated = this.currentPlan.frames.every(frame => frame.imageUrls.length);
@@ -3865,6 +4031,31 @@ Only return the JSON structure without additional text.`
 
     // --- NEW METHOD: Show Image Download UI ---
     showImageDownloadUI() {
+        // --- ADDED: Check and hide export UI first ---
+        const exportUI = document.querySelector('.prompter-export-ui.active');
+        if (exportUI) {
+            const exportContainer = exportUI.closest('.prompter-export-ui-container');
+            if (exportContainer) {
+                exportUI.classList.remove('active');
+                setTimeout(() => exportContainer.innerHTML = '', 300); // Clear after animation
+            }
+            // Wait a bit for the export UI to start closing before showing download UI
+            setTimeout(() => {
+                this._createAndShowDownloadUI();
+            }, 100); // Small delay
+            return; // Stop here, let the timeout handle showing the UI
+        }
+        // --- END ADDED ---
+
+        // Original logic moved to a helper function
+        this._createAndShowDownloadUI();
+    }
+
+    // --- ADDED: Helper function for creating/showing download UI ---
+    _createAndShowDownloadUI() {
+        // Ensure live preview stays hidden while download UI is active
+        this.hideLiveGifPreview();
+
         const completedFrames = this.currentPlan?.frames.filter(f => f.status === 'complete' && f.imageUrls.length) || [];
         if (completedFrames.length === 0) {
             this.showFrameActionToast("No completed frames available to download.", "info");
@@ -3979,7 +4170,11 @@ Only return the JSON structure without additional text.`
 
         cancelBtn.addEventListener('click', () => {
             uiElement.classList.remove('active'); // Trigger exit animation
-            setTimeout(() => downloadUIContainer.innerHTML = '', 300); // Remove after animation
+            setTimeout(() => {
+                downloadUIContainer.innerHTML = ''; // Remove after animation
+                // Check if we should restore the live preview
+                this.restoreLivePreviewIfNeeded();
+            }, 300);
         });
 
         downloadBtn.addEventListener('click', () => {
@@ -3997,7 +4192,7 @@ Only return the JSON structure without additional text.`
             uiElement.classList.add('active');
         });
         uiElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
+    } // End of _createAndShowDownloadUI
 
     // --- NEW METHOD: Start Image Download ---
     async startImageDownload(indices, downloadButton) {
@@ -4190,6 +4385,359 @@ Do not include any text outside this JSON structure.`
                 }
             }
         });
+    }
+
+    // --- ADDED: New method to update the prompter toggle button's state ---
+    updatePrompterButtonState(state) {
+        if (!this.prompterButton) return;
+
+        // Clear existing listener first
+        if (this.prompterButtonClickListener) {
+            this.prompterButton.removeEventListener('click', this.prompterButtonClickListener);
+            this.prompterButtonClickListener = null;
+        }
+
+        if (state === 'generating') {
+            this.prompterButton.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1">
+                    <rect x="6" y="6" width="12" height="12" rx="1"></rect>
+                </svg>
+                <span class="prompter-btn-tooltip">Stop Generation</span>
+            `;
+            this.prompterButton.classList.add('generating-frames');
+            this.prompterButton.setAttribute('title', 'Stop Frame Generation');
+
+            // Add listener to stop generation
+            this.prompterButtonClickListener = () => this.stopFrameGeneration();
+            this.prompterButton.addEventListener('click', this.prompterButtonClickListener);
+
+        } else { // state === 'idle' or any other state
+            this.prompterButton.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polygon points="10 8 16 12 10 16 10 8"></polygon>
+                </svg>
+                <span class="prompter-btn-tooltip">Animation Prompter</span>
+            `;
+            this.prompterButton.classList.remove('generating-frames');
+            this.prompterButton.classList.toggle('active', this.isActive); // Keep active class if prompter is active
+            this.prompterButton.setAttribute('title', 'Toggle Animation Prompter');
+
+            // Add listener to toggle prompter conversation
+            this.prompterButtonClickListener = () => this.togglePrompterConversation();
+            this.prompterButton.addEventListener('click', this.prompterButtonClickListener);
+        }
+    }
+
+    // --- ADDED: New method to stop frame generation ---
+    stopFrameGeneration() {
+        if (!this.isGeneratingAllFrames) return; // Already stopped
+
+        console.log('DEBUG: Stopping frame generation sequence.');
+        this.isGeneratingAllFrames = false;
+
+        // Clear any pending generation timeouts/intervals if necessary
+        // (Gemini SDK calls are harder to cancel, but stopping the sequence is key)
+
+        // Update the prompter button back to idle/active state
+        this.updatePrompterButtonState('idle');
+
+        // Update the main "Generate All" button state
+        this.checkAllFramesComplete();
+
+        // Show a message to the user
+        this.showSystemMessage("Frame generation stopped by user.");
+    }
+
+    // --- ADDED: Function to update the live GIF preview ---
+    async updateLiveGifPreview() {
+        if (!this.currentPlan || this.currentPlan.frameCount < 2) {
+            this.hideLiveGifPreview(); // Not enough frames
+            return;
+        }
+
+        const previewContainer = document.querySelector('.prompter-live-gif-preview-container');
+        if (!previewContainer) return; // Container not found
+
+        const completedFrames = this.currentPlan.frames.filter(f => f.status === 'complete' && f.imageUrls.length > 0);
+        if (completedFrames.length < 2) {
+            this.hideLiveGifPreview(); // Not enough completed frames
+            return;
+        }
+
+        // Gather image URLs using the selected index
+        const frameUrls = completedFrames.map(f => f.imageUrls[f.selectedImageIndex]);
+
+        // Show loading state
+        previewContainer.innerHTML = `
+            <div class="prompter-live-gif-loading">
+                <div class="prompter-loading-animation">
+                    <div class="prompter-loading-dot"></div>
+                    <div class="prompter-loading-dot"></div>
+                    <div class="prompter-loading-dot"></div>
+                </div>
+                <span class="loading-text">Updating preview...</span>
+            </div>
+        `;
+        previewContainer.classList.add('active', 'loading');
+        previewContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+
+        try {
+            const defaultDelay = 200; // Use a default delay for the preview
+            const gifBlob = await this.createGif(frameUrls, defaultDelay);
+            const gifUrl = URL.createObjectURL(gifBlob);
+
+            previewContainer.innerHTML = `
+                <div class="live-gif-header">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 7v10l5-5-5-5z"/><path d="M2 12h8"/><path d="M21 12h-8"/><rect x="2" y="3" width="19" height="18" rx="2"/></svg >
+                    Live Preview (${completedFrames.length} frames @ ${defaultDelay}ms)
+                </div>
+                <img src="${gifUrl}" alt="Live Animation Preview" class="live-gif-preview-image">
+            `;
+            previewContainer.classList.remove('loading');
+            previewContainer.classList.add('active'); // Ensure it's visible
+            previewContainer.classList.remove('error-state');
+
+        } catch (error) {
+            console.error('Error creating live GIF preview:', error);
+            previewContainer.innerHTML = `
+                 <div class="live-gif-header error">
+                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg >
+                    Preview Error
+                </div>
+                <p class="preview-error-text">Could not create preview: ${error.message || 'Unknown error'}</p>
+            `;
+            previewContainer.classList.remove('loading');
+            previewContainer.classList.add('active', 'error-state');
+        }
+    }
+
+    // --- ADDED: Function to hide the live GIF preview ---
+    hideLiveGifPreview() {
+        const previewContainer = document.querySelector('.prompter-live-gif-preview-container');
+        if (previewContainer) {
+            previewContainer.classList.remove('active', 'loading', 'error-state');
+            // Optionally clear content after animation
+            // setTimeout(() => { previewContainer.innerHTML = ''; }, 300);
+        }
+    }
+
+    // --- NEW: Function to restore live preview if all frames are complete ---
+    restoreLivePreviewIfNeeded() {
+        // Only restore if we have a current plan
+        if (!this.currentPlan || !this.currentPlan.frames) return;
+        
+        // Check if all frames are complete
+        const allFramesComplete = this.currentPlan.frames.every(frame => 
+            frame.status === 'complete' && frame.imageUrls.length > 0);
+            
+        // Need at least 2 frames for animation
+        if (allFramesComplete && this.currentPlan.frames.length >= 2) {
+            // Restore live preview
+            this.updateLiveGifPreview();
+        }
+    }
+
+    async addInBetweenFrame(prevIndex, nextIndex) {
+        if (!this.currentPlan) return;
+        
+        // Validate indices
+        if (prevIndex < 0 || nextIndex >= this.currentPlan.frameCount || nextIndex - prevIndex !== 1) {
+            console.error('Invalid frame indices for in-between frame');
+            return;
+        }
+        
+        // Get the previous and next frames
+        const prevFrame = this.currentPlan.frames[prevIndex];
+        const nextFrame = this.currentPlan.frames[nextIndex];
+        
+        // The new frame will be inserted at the next index position
+        const newIndex = nextIndex;
+        
+        // Find and update the in-between button to show loading state
+        const inBetweenBtn = document.querySelector(`.frame-insert-between[data-prev-index="${prevIndex}"]`);
+        if (inBetweenBtn) {
+            inBetweenBtn.classList.add('loading');
+        }
+        
+        try {
+            // Generate a transition description based on both frames
+            const result = await this.generateInBetweenFrameWithAI(prevFrame, nextFrame, newIndex);
+            
+            // Create prompt based on the generated description
+            const prompt = this.generateFramePrompt(
+                this.currentPlan.prompt,
+                result.description,
+                newIndex, 
+                this.currentPlan.frameCount + 1, // Total frames will increase by 1
+                result.elements || [],
+                result.transition || "Smooth transition between frames"
+            );
+            
+            // Create the new in-between frame
+            const newFrame = {
+                index: newIndex,
+                description: result.description,
+                elements: result.elements || [],
+                transition: result.transition || "Smooth transition between frames",
+                prompt: prompt,
+                imageUrls: [],
+                selectedImageIndex: null,
+                status: 'pending'
+            };
+            
+            // Insert the new frame at the nextIndex position, shifting other frames
+            this.currentPlan.frames.splice(newIndex, 0, newFrame);
+            
+            // Update all subsequent frame indices
+            for (let i = newIndex + 1; i < this.currentPlan.frames.length; i++) {
+                this.currentPlan.frames[i].index = i;
+            }
+            
+            // Update total frame count
+            this.currentPlan.frameCount = this.currentPlan.frames.length;
+            
+            // Show success notification
+            this.showFrameActionToast(`Transition frame added between frames ${prevIndex + 1} and ${nextIndex + 1}`, 'add');
+            
+            // Refresh the animation plan to show the new frame
+            this.refreshAnimationPlan();
+            
+            // Highlight and scroll to the new frame
+            setTimeout(() => {
+                const newFrameElement = document.querySelector(`.prompter-frame[data-index="${newIndex}"]`);
+                if (newFrameElement) {
+                    newFrameElement.classList.add('newly-added');
+                    newFrameElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    
+                    // Remove highlight after animation completes
+                    setTimeout(() => {
+                        newFrameElement.classList.remove('newly-added');
+                    }, 1500);
+                }
+                
+                // Auto-generate the new frame
+                this.generateFrame(newIndex);
+            }, 300);
+            
+        } catch (error) {
+            console.error('Error creating in-between frame:', error);
+            
+            // Create a basic transition frame as fallback
+            const fallbackDescription = `Transition between ${prevFrame.description} and ${nextFrame.description}`;
+            
+            const fallbackFrame = {
+                index: newIndex,
+                description: fallbackDescription,
+                elements: [],
+                transition: "Bridging transition",
+                prompt: this.generateFramePrompt(
+                    this.currentPlan.prompt,
+                    fallbackDescription,
+                    newIndex,
+                    this.currentPlan.frameCount + 1,
+                    [],
+                    "Bridging transition"
+                ),
+                imageUrls: [],
+                selectedImageIndex: null,
+                status: 'pending'
+            };
+            
+            // Insert the fallback frame
+            this.currentPlan.frames.splice(newIndex, 0, fallbackFrame);
+            
+            // Update indices
+            for (let i = newIndex + 1; i < this.currentPlan.frames.length; i++) {
+                this.currentPlan.frames[i].index = i;
+            }
+            
+            // Update frame count
+            this.currentPlan.frameCount = this.currentPlan.frames.length;
+            
+            // Show toast for fallback
+            this.showFrameActionToast(`Basic transition frame added`, 'info');
+            
+            // Refresh display
+            this.refreshAnimationPlan();
+            
+            // Scroll to and generate the new frame
+            setTimeout(() => {
+                const newFrameElement = document.querySelector(`.prompter-frame[data-index="${newIndex}"]`);
+                if (newFrameElement) {
+                    newFrameElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+                this.generateFrame(newIndex);
+            }, 300);
+        } finally {
+            // Reset the in-between button if it exists
+            if (inBetweenBtn) {
+                inBetweenBtn.classList.remove('loading');
+            }
+        }
+    }
+    
+    // Generate a transition frame description using AI
+    async generateInBetweenFrameWithAI(prevFrame, nextFrame, newIndex) {
+        try {
+            // Create a prompt for the AI to generate an in-between transition frame
+            const transitionFramePrompt = {
+                contents: [{
+                    role: 'user',
+                    parts: [{
+                        text: `I'm creating an animation sequence and need help creating a smooth transition frame between two existing frames.
+                        
+The overall animation concept is: "${this.currentPlan.concept}"
+
+Frame ${prevFrame.index + 1} has this description:
+"${prevFrame.description}"
+
+Frame ${prevFrame.index + 2} has this description:
+"${nextFrame.description}"
+
+I need a transition frame that would naturally fit between these two frames for a smoother animation.
+Format your response as a JSON object with this structure:
+{
+  "description": "Detailed description of what should be in this transition frame",
+  "elements": ["key element 1", "key element 2", "key element 3"],
+  "transition": "How this frame bridges the gap between the two existing frames"
+}
+
+The transition frame should have elements of both surrounding frames but show a clear progression between them.
+Only return the JSON structure without additional text.`
+                    }]
+                }],
+                generationConfig: {
+                    temperature: 0.7,
+                    maxOutputTokens: 1000
+                }
+            };
+
+            // Make the API call
+            const result = await window.app.geminiModel.generateContent(transitionFramePrompt);
+            const response = await result.response;
+            const text = response.text();
+            
+            // Parse the JSON response
+            try {
+                const jsonStart = text.indexOf('{');
+                const jsonEnd = text.lastIndexOf('}') + 1;
+                const jsonString = text.substring(jsonStart, jsonEnd);
+                return JSON.parse(jsonString);
+            } catch (parseError) {
+                console.error('Error parsing JSON from AI response:', parseError);
+                // Return a basic structure if parsing fails
+                return {
+                    description: `Transition between frames ${prevFrame.index + 1} and ${prevFrame.index + 2}`,
+                    elements: [],
+                    transition: "Smooth transition between frames"
+                };
+            }
+        } catch (error) {
+            console.error('Error generating in-between frame description:', error);
+            throw error;
+        }
     }
 }
 
