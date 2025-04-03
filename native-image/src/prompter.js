@@ -4376,7 +4376,7 @@ Only return the JSON structure without additional text.`
         if (editBtn) {
             editBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                this.editFramePrompt(index);
+                this.showFramePromptDialog(index);
             });
         }
         
