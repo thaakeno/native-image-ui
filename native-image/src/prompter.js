@@ -1727,7 +1727,10 @@ The style should be consistent with other frames in the sequence, with smooth tr
 
         // --- Ensure status is 'generating' BEFORE scrolling ---
         frame.status = 'generating';
-        this.completionMessageShown = false; // Reset completion message flag
+        // {{ edit }} Only reset the completion flag when generating ALL frames
+        if (this.isGeneratingAllFrames) {
+            this.completionMessageShown = false; // Reset completion message flag ONLY when starting 'Generate All'
+        }
         
         // Update UI to show generating state (adds .generating class)
         this.refreshSingleFrameUI(index); // Use the helper to update just this frame
@@ -2873,20 +2876,25 @@ The style should be consistent with other frames in the sequence, with smooth tr
                 return `All frames are done. You can export as a GIF, regenerate specific frames if you're not satisfied, or continue the conversation.`;
             }
             
+            // {{ edit }} Get the animation concept for context
+            const animationConcept = this.currentPlan?.concept || "the user's animation";
+            const animationPrompt = this.currentPlan?.prompt || "an animation"; // Get original prompt too
+
             // Create a structured prompt for the completion message
             const completionPrompt = {
                 contents: [{
                     role: 'user',
                     parts: [
                         {
+                            // {{ edit }} Updated prompt to include context
                             text: `You are a skilled but slightly impatient animation assistant with a touch of sarcasm. You have a distinctive personality - you're direct, occasionally snarky, but still helpful. You're good at what you do and you know it. You never use emojis or exclamation points excessively.
 
-All frames of the user's animation have now been generated successfully.
+All frames for the user's animation about "${animationConcept}" (based on the initial idea: "${animationPrompt}") have now been generated successfully.
 
 Write a brief message informing them that all frames are complete and what options they have next. Your response must:
 1. Be concise (2-3 sentences maximum)
 2. Have a hint of sarcasm or dry wit without being rude
-3. Tell them all frames are ready
+3. Briefly acknowledge the animation's subject ("${animationConcept}") in your sarcastic tone (e.g., grudgingly admit it's done, perhaps hint if the idea was interesting or mundane *to you*)
 4. Mention their three options: export as GIF, regenerate frames, or continue conversation
 5. NOT use bullet points, numbered lists, or emojis
 6. NOT be overly enthusiastic or use phrases like "Woohoo!" or "That was a blast!"
@@ -2894,7 +2902,7 @@ Write a brief message informing them that all frames are complete and what optio
 8. Sound like a real person with an edge, not a generic AI
 9. Avoid cringe phrases like "animation magic" or "I'm all ears"
 
-Remember, you're skilled but slightly impatient - write like someone who's competent and gets straight to the point.`
+Remember, you're skilled but slightly impatient - write like someone who's competent and gets straight to the point, but now briefly tailor the sarcasm to the animation's theme.`
                         }
                     ]
                 }],
@@ -2919,7 +2927,9 @@ Remember, you're skilled but slightly impatient - write like someone who's compe
         } catch (error) {
             console.error('Error generating completion message:', error);
             // Return a simple fallback message in case of error
-            return `All frames are done. You can export as a GIF, regenerate specific frames if you're not satisfied, or continue the conversation.`;
+            // {{ edit }} Slightly update fallback for consistency
+            const concept = this.currentPlan?.concept ? ` for "${this.currentPlan.concept}"` : '';
+            return `Alright, all frames${concept} are done. You can export as a GIF, regenerate specific frames, or continue the conversation.`;
         }
     }
     
