@@ -4376,7 +4376,7 @@ Only return the JSON structure without additional text.`
         if (editBtn) {
             editBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                this.showFramePromptDialog(index);
+                this.editFramePrompt(index);
             });
         }
         
@@ -5300,6 +5300,141 @@ Only return the JSON structure without additional text.`
             console.error('Error generating in-between frame description:', error);
             throw error;
         }
+    }
+
+    // --- NEW METHOD: Edit Frame Prompt Dialog ---
+    editFramePrompt(index) {
+        const frame = this.currentPlan.frames[index];
+        if (!frame) return;
+        
+        // Create dialog for editing the prompt
+        const dialog = document.createElement('div');
+        dialog.className = 'prompter-dialog edit-prompt-dialog';
+        dialog.innerHTML = `
+            <div class="prompter-dialog-overlay"></div>
+            <div class="prompter-dialog-content">
+                <div class="prompter-dialog-header">
+                    <h3 class="prompter-dialog-title">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                        </svg> Edit Frame ${index + 1}
+                    </h3>
+                    <button class="prompter-dialog-close">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="prompter-dialog-body">
+                    <div class="prompter-prompt-instructions">Edit the frame description below. This will be used to regenerate the image.</div>
+                    
+                    <div class="prompter-textarea-container">
+                        <textarea class="prompter-dialog-textarea" id="frame-description-editor" placeholder="Describe this frame...">${frame.description || ''}</textarea>
+                    </div>
+                    
+                    <div class="prompter-prompt-tips">
+                        <div class="prompter-tip-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="12" y1="16" x2="12" y2="12"></line>
+                                <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                            </svg>
+                        </div>
+                        <div class="prompter-tip-text">
+                            Be specific about <span>pose</span>, <span>lighting</span>, and <span>composition</span>. Your changes will cause the frame to regenerate.
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="prompter-dialog-actions">
+                    <button class="prompter-dialog-button prompter-dialog-cancel">Cancel</button>
+                    <button class="prompter-dialog-button prompter-dialog-save">Save & Regenerate</button>
+                </div>
+            </div>
+        `;
+        
+        // Add to document
+        document.body.appendChild(dialog);
+        
+        // Define closeDialog function
+        const closeDialog = () => {
+            dialog.classList.remove('active');
+            setTimeout(() => {
+                dialog.remove();
+            }, 300);
+        };
+
+        // Make the dialog visible
+        requestAnimationFrame(() => {
+            dialog.classList.add('active');
+        });
+        
+        // Add event listeners
+        const closeBtn = dialog.querySelector('.prompter-dialog-close');
+        const cancelBtn = dialog.querySelector('.prompter-dialog-cancel');
+        const saveBtn = dialog.querySelector('.prompter-dialog-save');
+        const overlay = dialog.querySelector('.prompter-dialog-overlay');
+        const textArea = dialog.querySelector('.prompter-dialog-textarea');
+        
+        if (closeBtn) closeBtn.addEventListener('click', closeDialog);
+        if (cancelBtn) cancelBtn.addEventListener('click', closeDialog);
+        if (overlay) overlay.addEventListener('click', closeDialog);
+        
+        // Save button
+        if (saveBtn) {
+            saveBtn.addEventListener('click', async () => {
+                const newDescription = textArea.value.trim();
+                
+                if (!newDescription) {
+                    textArea.classList.add('error');
+                    setTimeout(() => textArea.classList.remove('error'), 500);
+                    return;
+                }
+                
+                // Update the frame description
+                frame.description = newDescription;
+                
+                // Generate a new prompt based on the description
+                frame.prompt = this.generateFramePrompt(
+                    this.currentPlan.prompt,
+                    newDescription,
+                    index,
+                    this.currentPlan.frameCount,
+                    frame.elements || [],
+                    frame.transition || ''
+                );
+                
+                // Update the status to regenerate
+                frame.status = 'generating';
+                frame.imageUrls = [];
+                frame.selectedImageIndex = null;
+                frame.errorMessage = null;
+                
+                // Refresh UI to show "Generating..." button state
+                this.refreshSingleFrameUI(index);
+                
+                // Close the dialog
+                closeDialog();
+                
+                // Generate the new image
+                this.generateImageWithGemini(index, true);
+            });
+        }
+        
+        // Allow closing with escape key
+        const escListener = (e) => {
+            if (e.key === 'Escape') {
+                closeDialog();
+                document.removeEventListener('keydown', escListener);
+            }
+        };
+        document.addEventListener('keydown', escListener);
+        
+        // Focus the textarea
+        setTimeout(() => textArea.focus(), 100);
     }
 }
 
