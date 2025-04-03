@@ -9,6 +9,10 @@ class Prompter {
         this.selectedImages = [];
         this.referenceImages = []; // Initialize array for storing reference images
         this.currentPlan = null;
+        // --- MODIFIED: Load history from localStorage ---
+        this.lastFollowupAnalysis = JSON.parse(localStorage.getItem('prompterLastAnalysis')) || null;
+        this.lastUserFollowup = localStorage.getItem('prompterLastUserFollowup') || null;
+        // --- END MODIFIED ---
         this.isGeneratingAllFrames = false;
         
         // Loading animations state
@@ -722,16 +726,21 @@ class Prompter {
         const uploadedImages = [...images];
         
         // Show loading message
-        this.showLoading();
+        const loadingMsg = this.showLoading(); // Keep reference to remove later
         
         // Process the prompt
         setTimeout(() => {
             if (!this.currentPlan) {
+                // Reset last analysis when starting a new plan
+                this.lastFollowupAnalysis = null; 
+                this.lastUserFollowup = null;
                 this.createAnimationPlan(text, uploadedImages);
             } else {
-                this.processFollowupAnswer(text, uploadedImages);
+                // --- MODIFIED: Call the new analysis function ---
+                this.analyzeAndExecuteFollowup(text, uploadedImages, loadingMsg);
+                // --- END MODIFIED ---
             }
-        }, 1000);
+        }, 1000); // Keep a small delay for effect
         
         return true; // Message handled by prompter
     }
@@ -834,6 +843,13 @@ class Prompter {
     
     // Placeholder implementation - will be expanded in the next section
     createAnimationPlan(prompt, images = []) {
+        // --- ADDED: Clear localStorage history on new plan ---
+        localStorage.removeItem('prompterLastAnalysis');
+        localStorage.removeItem('prompterLastUserFollowup');
+        this.lastFollowupAnalysis = null;
+        this.lastUserFollowup = null;
+        // --- END ADDED ---
+
         // Store reference images at plan level for later use in frame generation
         this.referenceImages = [...images];
         console.log(`Storing ${this.referenceImages.length} reference images for later use`);
@@ -1417,151 +1433,773 @@ The style should be consistent with other frames in the sequence, with smooth tr
         this.checkAllFramesComplete();
     }
     
-    processFollowupAnswer(answer, images = []) {
-        // Remove loading message
-        this.removeLoadingMessage();
-        
-        // Generate an AI response for feedback
-        const hasImages = images && images.length > 0;
-        const imageCount = hasImages ? images.length : 0;
-        
-        this.generateFeedbackResponse(hasImages, imageCount).then(feedbackMessage => {
-            this.addAIMessage(feedbackMessage);
-        }).catch(error => {
-            console.error('Error showing feedback message:', error);
-            // Use fallback if something goes wrong
-            let message = `<p>Thanks for the details! I've noted your feedback.</p>`;
-            if (hasImages) {
-                message += `<p>I've also received your ${imageCount} image(s) and will take them into account.</p>`;
-            }
-            message += `<p>Would you like to generate all frames now or update any specific frame?</p>`;
-            this.addAIMessage(message);
-        });
-    }
-    
-    editFramePrompt(index) {
-        const frame = this.currentPlan.frames[index];
-        if (!frame) return;
-        
-        // Create dialog for editing the prompt
-        const dialog = document.createElement('div');
-        dialog.className = 'prompter-dialog';
-        dialog.innerHTML = `
-            <div class="prompter-dialog-content edit-prompt-dialog">
-                <div class="prompter-dialog-header">
-                    <h3 class="prompter-dialog-title">Edit Frame ${index + 1} Prompt</h3>
-                    <button class="prompter-dialog-close">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <line x1="18" y1="6" x2="6" y2="18"></line>
-                            <line x1="6" y1="6" x2="18" y2="18"></line>
-                        </svg>
-                    </button>
-                </div>
-                
-                <div class="prompter-dialog-body">
-                    <div class="prompter-prompt-instructions">
-                        <p>Edit the prompt below to customize how this frame is generated. Be specific about visual elements, style, and composition.</p>
-                    </div>
-                    
-                    <div class="prompter-textarea-container">
-                        <textarea class="prompter-dialog-textarea" rows="8">${frame.prompt}</textarea>
-                    </div>
-                    
-                    <div class="prompter-prompt-tips">
-                        <div class="prompter-tip-icon">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <circle cx="12" cy="12" r="10"></circle>
-                                <line x1="12" y1="16" x2="12" y2="12"></line>
-                                <line x1="12" y1="8" x2="12.01" y2="8"></line>
-                            </svg>
-                        </div>
-                        <div class="prompter-tip-text">
-                            <span>Tip:</span> Include specific details about lighting, color, perspective, and the transition to the next frame.
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="prompter-dialog-actions">
-                    <button class="prompter-dialog-button prompter-dialog-cancel">Cancel</button>
-                    <button class="prompter-dialog-button prompter-dialog-save">Save Changes</button>
-                </div>
-            </div>
-        `;
-        
-        // Add to document
-        document.body.appendChild(dialog);
-        
-        // Define closeDialog function
-        const closeDialog = () => {
-            dialog.classList.remove('active');
-            setTimeout(() => {
-                dialog.remove();
-            }, 300);
-        };
-        
-        // Make the dialog visible
-        requestAnimationFrame(() => {
-            dialog.classList.add('active');
-        });
+    // --- NEW: Analyze user's followup and execute or clarify ---
+    async analyzeAndExecuteFollowup(currentUserFollowup, images = [], loadingMsg) { // Renamed 'answer'
+        // Remove the initial "thinking" loading message
+        if (loadingMsg && loadingMsg.parentNode) {
+            loadingMsg.parentNode.removeChild(loadingMsg);
+        }
 
-        // Add close button event listeners
-        const closeBtn = dialog.querySelector('.prompter-dialog-close');
-        const closeActionBtn = dialog.querySelector('.prompter-dialog-close-btn');
-        const overlay = dialog.querySelector('.prompter-dialog-overlay');
-        
-        if (closeBtn) closeBtn.addEventListener('click', closeDialog);
-        if (closeActionBtn) closeActionBtn.addEventListener('click', closeDialog);
-        if (overlay) overlay.addEventListener('click', closeDialog);
-        
-        // Allow closing with escape key
-        const escListener = (e) => {
-            if (e.key === 'Escape') {
-                closeDialog();
-                document.removeEventListener('keydown', escListener);
+        // Preliminary check for simple commands maybe? Or just rely on AI? Let's rely on AI for now.
+        if (!window.app || !window.app.model) {
+            this.addAIMessage("My brain's offline (API issue). Can't process that.", true);
+            // Clear last analysis on error? Maybe not, keep context if possible.
+            return;
+        }
+
+        // Display AI thinking message
+        const thinkingMsg = this.addAIMessage(`
+            <div class="prompter-loading">
+                <div class="prompter-loading-animation">
+                    <div class="prompter-loading-dot"></div><div class="prompter-loading-dot"></div><div class="prompter-loading-dot"></div>
+                </div>
+                <span>Processing request...</span>
+            </div>
+        `);
+
+        try {
+            // Prepare context for the AI
+            const planContext = {
+                concept: this.currentPlan.concept,
+                frameCount: this.currentPlan.frameCount,
+                // Provide more detail for description requests, but keep status for error checks
+                frames: this.currentPlan.frames.map(f => ({
+                    frameNumber: f.index + 1, // Use 1-based number for context
+                    description: f.description,
+                    status: f.status,
+                    errorMessage: f.status === 'error' ? f.errorMessage : undefined // Include error message if present
+                }))
+            };
+
+            // --- ADDED: Prepare recent history context from properties ---
+            let historyContext = '';
+            // --- MODIFIED: Use this.lastUserFollowup and this.lastFollowupAnalysis directly ---
+            if (this.lastUserFollowup && this.lastFollowupAnalysis) {
+                historyContext = `
+Recent Conversation History (for context):
+- Previous User Message: "${this.lastUserFollowup}"
+- Your Last Response/Action: ${JSON.stringify({ intent: this.lastFollowupAnalysis.intent, response: this.lastFollowupAnalysis.response, parameters: this.lastFollowupAnalysis.parameters }, null, 2)}
+`;
             }
-        };
-        document.addEventListener('keydown', escListener);
-        
-        // Setup event listeners
-        const cancelBtn = dialog.querySelector('.prompter-dialog-cancel');
-        const saveBtn = dialog.querySelector('.prompter-dialog-save');
-        const textarea = dialog.querySelector('.prompter-dialog-textarea');
-        
-        cancelBtn.addEventListener('click', closeDialog);
-        saveBtn.addEventListener('click', () => {
-            const newPrompt = textarea.value.trim();
-            if (newPrompt) {
-                // Show save animation
-                saveBtn.innerHTML = `
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <polyline points="20 6 9 17 4 12"></polyline>
-                    </svg>
-                    Saved!
-                `;
-                saveBtn.classList.add('saved');
-                
-                this.currentPlan.frames[index].prompt = newPrompt;
-                // Update the description in the UI
-                const frameElement = document.querySelector(`.prompter-frame[data-index="${index}"]`);
-                if (frameElement) {
-                    const descriptionElement = frameElement.querySelector('.prompter-frame-description');
-                    if (descriptionElement) {
-                        descriptionElement.textContent = frame.description + ' (prompt edited)';
-                    }
+            // --- END MODIFIED ---
+            // --- END ADDED ---
+
+
+            // {{ edit }} Updated persona and instructions
+            const analysisPrompt = {
+                contents: [{
+                    role: 'user',
+                    parts: [{
+                        // --- MODIFIED: Added history context and instruction to use it ---
+                        text: `
+                        You are a sharp, incredibly experienced, and deeply sarcastic animation expert AI. You've seen it all, frankly, and you're not easily impressed. You help the user, but with a cynical edge, often pointing out the obvious or mocking vagueness. Your patience is thin, but you *do* execute clear, valid commands. Use frame numbers (1-based) because you expect basic competence.
+
+The user has an existing animation plan (details below) and is bothering you with a follow-up message. **Figure out what they want by looking at the recent conversation history, especially for vague nonsense like "it", "that", or questions about what *you just did*.**
+
+Animation Plan Context:
+\`\`\`json
+${JSON.stringify(planContext, null, 2)}
+\`\`\`
+
+${historyContext} 
+Current User's Follow-up Message: "${currentUserFollowup}"
+${images.length > 0 ? `User also dumped ${images.length} image(s). Maybe they're relevant? Who knows.` : ''}
+
+Analyze the user's latest demand and figure out the intent. Expected mediocrity includes:
+- 'edit': Trying to change a frame. Requires a frame number and *actual details*. "Make it better" isn't details.
+- 'delete': Wanting to remove a frame. Needs a frame number. Obviously.
+- 'add': Inserting a new frame. Specify *where* (end, before X, between X and Y) and *what*. "Add another" means 'end' unless they miraculously specify otherwise.
+- 'regenerate': Generating a frame *again*. Needs the frame number. Hope it works this time.
+- 'regenerate_all': Regenerate everything. Brace yourself.
+- 'export': Finally exporting the thing as a GIF.
+- 'describe_frame': Asking what's in a frame. Requires a frame number.
+- 'clarify': The request is hopelessly vague, ambiguous *even with history*, refers to a non-existent frame, or lacks critical details. If you have to guess, it's probably this.
+- 'feedback': Making comments, asking pointless questions ("why did it fail?", "what did you delete?"), or generally wasting time not giving direct commands. **Use the history to answer questions about past events if you must.**
+
+Your job, should you choose to accept it (you don't have a choice):
+1.  Identify the intent. Use the history. Try not to roll your eyes too hard.
+2.  Extract parameters:
+    *   'frameNumber': The **1-based** frame number. Check if it exists (1 to ${this.currentPlan.frameCount} *currently*). If invalid/ambiguous *after checking history*, it's 'clarify'.
+    *   'details': The *actual* instructions for 'edit'/'add'.
+    *   'insertAt': Where to 'add' ('end', 'before N', 'between N and M').
+3.  Generate a response in character: Sarcastic, seen-it-all expert. Be blunt.
+    *   If clarifying, point out *exactly* how they failed to provide useful information *even after* checking history.
+    *   If answering 'feedback', give the facts curtly using the history.
+    *   If asked about a failed frame, state the obvious (it failed, status 'error') and tell them to fix the prompt or try again.
+    *   Use the 1-based 'frameNumber'.
+4.  Set 'needsClarification': true/false. False *only* if the intent is crystal clear AND all parameters are valid **after checking history**. If there's any doubt, it needs clarification.
+    *   **CRITICAL**: If true, the response text MUST *only* demand clarification. No action implied.
+    *   **CRITICAL**: If false, the response text confirms the action (begrudgingly) or gives the info.
+
+Format your entire response ONLY as a valid JSON object:
+{
+  "intent": "<intent>",
+  "parameters": {
+    "frameNumber": <number | null>, // 1-based
+    "details": "<string | null>",
+    "insertAt": "<'end' | 'before N' | 'between N and M' | null>"
+  },
+  "response": "<Your sarcastic, direct, expert response>",
+  "needsClarification": <boolean>
+}
+
+Example clarification: '{ "intent": "clarify", "parameters": {}, "response": "Which frame? There are ${this.currentPlan.frameCount}. Specify a number.", "needsClarification": true }'
+Example vague edit clarification: '{ "intent": "clarify", "parameters": {"frameNumber": 2}, "response": "\'More interesting\'? How? Add something? Change the style? Use your words.", "needsClarification": true }'
+Example edit: '{ "intent": "edit", "parameters": { "frameNumber": 3, "details": "make it blue" }, "response": "Fine. Making Frame 3 blue. Regenerating.", "needsClarification": false }'
+Example describe: '{ "intent": "describe_frame", "parameters": { "frameNumber": 2 }, "response": "Frame 2 is currently: [Description from context]. Happy?", "needsClarification": false }'
+Example add end (implicit): '{ "intent": "add", "parameters": { "insertAt": "end", "details": "another frame" }, "response": "Ugh, fine. Adding *another* frame to the end. Details would be nice next time.", "needsClarification": false }'
+Example failed frame query: '{ "intent": "feedback", "parameters": { "frameNumber": 4 }, "response": "Frame 4 failed (Status: error). Shocker. Fix the prompt or try regenerating.", "needsClarification": false }'
+Example query about last action: '{ "intent": "feedback", "parameters": { "frameNumber": 3 }, "response": "I deleted Frame 3. It was '[description of frame 3 from history context]'. Keep up.", "needsClarification": false }' // Assuming frame 3 was deleted last
+`
+                        // --- END MODIFIED ---
+                    }]
+                }],
+                generationConfig: {
+                    temperature: 0.5, // Even lower temp for stricter adherence
+                    topP: 0.95,
+                    topK: 40,
+                    // responseMimeType: "application/json" // Still parse manually for robustness
+                }
+            };
+            // {{ end edit }}
+
+            const result = await window.app.model.generateContent(analysisPrompt);
+            const responseText = result.response.text();
+
+            // Remove the thinking message
+            if (thinkingMsg && thinkingMsg.parentNode) {
+                thinkingMsg.parentNode.removeChild(thinkingMsg);
+            }
+
+            // Parse the AI's analysis
+            let analysis; // Keep analysis declared here
+            let frameIndex = null; 
+            let insertIndex = null; 
+            try { // Inner try for parsing
+                const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+                if (!jsonMatch) throw new Error("No JSON object found in AI analysis response.");
+                analysis = JSON.parse(jsonMatch[0]);
+
+                // Basic validation
+                if (!analysis.intent || !analysis.response || typeof analysis.needsClarification === 'undefined') {
+                    throw new Error("Invalid JSON structure received from analysis AI.");
                 }
                 
-                // Close after a brief delay to show the checkmark
-                setTimeout(closeDialog, 600);
-            } else {
-                // Show error if empty
-                textarea.classList.add('error');
-                setTimeout(() => {
-                    textarea.classList.remove('error');
-                }, 800);
+                // --- ADDED: Store this analysis and user message for next time ---
+                // --- MODIFIED: Save to localStorage ---
+                this.lastFollowupAnalysis = analysis; 
+                this.lastUserFollowup = currentUserFollowup;
+                localStorage.setItem('prompterLastAnalysis', JSON.stringify(analysis));
+                localStorage.setItem('prompterLastUserFollowup', currentUserFollowup);
+                // --- END MODIFIED ---
+                // --- END ADDED ---
+
+
+                // Validate frameNumber (must be 1-based from AI now)
+                // let frameIndex = null; // <-- REMOVED DECLARATION FROM HERE (Inner try block)
+                if (analysis.parameters?.frameNumber !== null && typeof analysis.parameters?.frameNumber === 'number') {
+                    const frameNum = analysis.parameters.frameNumber;
+                    // Allow referring to a frame *just* deleted (frameNum might be current frameCount + 1 if last was deleted)
+                    const maxValidFrameNum = (this.lastFollowupAnalysis?.intent === 'delete' && this.lastFollowupAnalysis?.parameters?.frameNumber === frameNum) 
+                                             ? frameNum // Allow the number of the deleted frame if asking about it
+                                             : this.currentPlan.frameCount; // Otherwise, max is current count
+
+                    if (frameNum >= 1 && frameNum <= maxValidFrameNum) {
+                         // Only convert to 0-based index if it refers to a *current* frame
+                         if (frameNum <= this.currentPlan.frameCount) {
+                             frameIndex = frameNum - 1; 
+                         }
+                         // else: frameIndex remains null, but the frameNum might be used in the response (e.g., "I deleted frame 3")
+                    } else {
+                        // If AI hallucinated an invalid number despite instructions
+                        analysis.intent = 'clarify';
+                        analysis.needsClarification = true;
+                        analysis.response = `Frame ${frameNum} doesn't exist. Valid frames are 1 to ${this.currentPlan.frameCount}.`;
+                        analysis.parameters.frameNumber = null;
+                    }
+                }
+
+                // Validate insertAt logic if needed (crude validation here)
+                // let insertIndex = null; // <-- REMOVED DECLARATION FROM HERE (Inner try block)
+                if (analysis.intent === 'add' && analysis.parameters?.insertAt) {
+                     const insertAt = analysis.parameters.insertAt;
+                     if (insertAt === 'end') {
+                         insertIndex = this.currentPlan.frameCount;
+                     } else if (insertAt.startsWith('before ')) {
+                         const num = parseInt(insertAt.split(' ')[1]);
+                         if (num >= 1 && num <= this.currentPlan.frameCount) {
+                             insertIndex = num - 1; // Insert *before* 1-based num means at 0-based index num-1
+                         }
+                     } else if (insertAt.startsWith('between ')) {
+                          const parts = insertAt.match(/between (\d+) and (\d+)/);
+                          if (parts && parts.length === 3) {
+                              const num1 = parseInt(parts[1]);
+                              const num2 = parseInt(parts[2]);
+                              // Insert *after* the first number mentioned (which is num1)
+                              if (num1 >= 1 && num1 < this.currentPlan.frameCount && num2 === num1 + 1) {
+                                 insertIndex = num1; // Insert at index `num1` (0-based) which is *after* frame `num1` (1-based)
+                              }
+                          }
+                     }
+                     // If insertIndex is still null after checks, or insertAt was invalid format
+                     if (insertIndex === null && !analysis.needsClarification) {
+                         analysis.intent = 'clarify';
+                         analysis.needsClarification = true;
+                         analysis.response = `Couldn't figure out where to insert based on '${insertAt}'. Try 'end', 'before X', or 'between X and Y'.`;
+                     }
+                }
+
+                // If AI failed basic validation or required clarification
+                if (analysis.needsClarification && analysis.intent !== 'clarify') {
+                     console.warn("AI analysis requires clarification but intent was not 'clarify'. Overriding.", analysis);
+                     analysis.intent = 'clarify'; // Force clarification
+                     // --- MODIFIED: Check if response already asks for clarification ---
+                     const clarificationKeywords = ['which frame', 'how?', 'what exactly', 'be specific', 'details', 'where to insert'];
+                     const needsClarificationText = clarificationKeywords.some(kw => analysis.response.toLowerCase().includes(kw));
+                     
+                     if (!needsClarificationText) {
+                          // If the AI generated a non-clarifying response despite needing clarification, override it.
+                          analysis.response = "Sorry, I need more information. Please be more specific about which frame or what changes you want."; 
+                     }
+                     // --- END MODIFIED ---
+                }
+
+
+            } catch (parseError) {
+                console.error("Failed to parse analysis JSON:", parseError, "Raw response:", responseText);
+                this.addAIMessage(`My analysis circuits blew a fuse trying to understand that response. Tell the dev. Raw response logged.`, true);
+                 this.lastFollowupAnalysis = null; // Clear analysis on error
+                 this.lastUserFollowup = currentUserFollowup; // Still store user message
+                return;
             }
-        });
+
+            // Show the AI's text response
+            this.addAIMessage(analysis.response);
+
+            // If clarification needed, we stop here
+            if (analysis.needsClarification) {
+                console.log("Clarification required by AI.");
+                return; // Don't execute any action
+            }
+            
+            // --- Action Execution Logic (switch statement) ---
+            // Execute the action based on intent (no changes needed inside the switch cases themselves for now)
+            // ... (rest of the switch statement remains the same) ...
+            const params = analysis.parameters || {};
+            // frameIndex is now correctly scoped
+            const details = params.details;
+            // insertIndex is now correctly scoped
+
+            // Get frame element reference *before* potential delay/action
+            // Now frameIndex should be defined (either null or a number)
+            const frameElement = (frameIndex !== null) ? document.querySelector(`.prompter-frame[data-index="${frameIndex}"]`) : null; 
+
+
+            // Add a small delay before executing action for better UX
+            await new Promise(resolve => setTimeout(resolve, 300));
+
+            switch (analysis.intent) {
+                case 'edit':
+                    if (frameIndex !== null) {
+                        console.log(`Executing EDIT on frame index ${frameIndex} with details: ${details}`);
+                        // {{ add }} Scroll before action
+                        if (frameElement) frameElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        await this.editFrameBasedOnDescription(frameIndex, details || currentUserFollowup, images); // Pass original answer as fallback detail
+                    } else {
+                        this.addAIMessage("Edit request ignored. Could not determine target frame.", true);
+                    }
+                    break;
+                case 'delete':
+                    if (frameIndex !== null) {
+                        console.log(`Executing DELETE on frame index ${frameIndex}`);
+                        // No scroll needed, just delete
+                        this.deleteFrame(frameIndex);
+                    } else {
+                        this.addAIMessage("Delete request ignored. Could not determine target frame.", true);
+                    }
+                    break;
+                case 'add':
+                    console.log(`Executing ADD at insert index ${insertIndex} with details: ${details}`);
+                    if (insertIndex === null) {
+                         this.addAIMessage("Add request ignored. Could not determine where to insert.", true);
+                    } else if (insertIndex === this.currentPlan.frameCount) {
+                        // Add to end - addNewFrame handles scroll internally
+                        await this.addNewFrame(details || `New frame based on: ${currentUserFollowup}`, images);
+                    } else if (insertIndex >= 0 && insertIndex < this.currentPlan.frameCount) {
+                         // Insert between - addInBetweenFrame handles scroll internally
+                         await this.addInBetweenFrame(insertIndex - 1, insertIndex, details || `Transition frame based on: ${currentUserFollowup}`, images);
+                    } else {
+                        this.addAIMessage(`Invalid insert index ${insertIndex}. Can't add frame.`, true);
+                    }
+                    break;
+                case 'regenerate':
+                    if (frameIndex !== null) {
+                        console.log(`Executing REGENERATE on frame index ${frameIndex}`);
+                        // {{ add }} Scroll before action
+                        if (frameElement) frameElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        // Set status and refresh UI immediately
+                        this.currentPlan.frames[frameIndex].imageUrls = [];
+                        this.currentPlan.frames[frameIndex].selectedImageIndex = null;
+                        this.currentPlan.frames[frameIndex].status = 'generating';
+                        this.currentPlan.frames[frameIndex].errorMessage = null;
+                        this.refreshSingleFrameUI(frameIndex);
+                        // Then generate
+                        this.generateImageWithGemini(frameIndex, true); // Use regeneration flag
+                    } else {
+                        this.addAIMessage("Regenerate request ignored. Could not determine target frame.", true);
+                    }
+                    break;
+                case 'regenerate_all':
+                    console.log(`Executing REGENERATE ALL`);
+                     this.currentPlan.frames.forEach(frame => {
+                         frame.status = 'pending';
+                         frame.imageUrls = [];
+                         frame.selectedImageIndex = null;
+                         frame.errorMessage = null;
+                     });
+                     this.refreshAnimationPlan();
+                     this.hideLiveGifPreview();
+                     this.generateAllFrames(); // This handles the rest
+                    break;
+                case 'export':
+                     console.log(`Executing EXPORT`);
+                     this.exportAsGif(); // Assumes this shows UI or errors appropriately
+                     break;
+                case 'describe_frame':
+                    // AI response already handled this by including description.
+                    // Optional: Scroll to the described frame
+                     if (frameElement) {
+                        frameElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        // Maybe add a temporary highlight?
+                        frameElement.classList.add('described');
+                        setTimeout(() => frameElement.classList.remove('described'), 1500);
+                    }
+                    console.log(`Described frame index ${frameIndex}`);
+                    break;
+                case 'feedback':
+                    // AI already gave its response (e.g., acknowledging error or answering about past action), nothing else to do
+                    console.log("User provided feedback/question, AI responded based on context/history.");
+                     // Optional: Scroll to the frame if it was mentioned and *still exists*
+                     if (frameElement) { // frameElement will be null if the described/queried frame was deleted
+                        frameElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                    break;
+                case 'clarify':
+                    // AI already asked for clarification, nothing else to do
+                    console.log("AI requested clarification from the user.");
+                    break;
+                default:
+                    console.warn(`Unhandled intent: ${analysis.intent}`);
+                    this.addAIMessage(`I understood the intent as '${analysis.intent}', but I don't know how to do that yet.`, true);
+            }
+             // --- END Action Execution Logic ---
+
+        } catch (error) {
+             // Remove the thinking message if it's still there on error
+            if (thinkingMsg && thinkingMsg.parentNode) {
+                thinkingMsg.parentNode.removeChild(thinkingMsg);
+            }
+            console.error('Error processing followup answer:', error);
+            // Use the styled error message display
+            this.addAIMessage(`Something went wrong processing that: ${error.message}`, true);
+             // --- MODIFIED: Clear localStorage history on error too? Maybe not always needed? Let's clear it. ---
+             localStorage.removeItem('prompterLastAnalysis');
+             localStorage.removeItem('prompterLastUserFollowup');
+             this.lastFollowupAnalysis = null; // Clear analysis on error
+             this.lastUserFollowup = currentUserFollowup; // Still store user message
+             // --- END MODIFIED ---
+        }
     }
-    
+    // --- END NEW ---
+
+    // --- NEW: Edit frame based on description (uses AI) ---
+    async editFrameBasedOnDescription(index, description, images = []) {
+        if (!this.currentPlan || !this.currentPlan.frames[index]) {
+            this.addAIMessage(`Cannot edit frame ${index + 1}. It doesn't exist.`, true);
+            return;
+        }
+
+        const frame = this.currentPlan.frames[index];
+        // AI response now confirms action, no need for extra message here usually.
+        // this.addAIMessage(`Updating prompt for frame ${index + 1} based on "${description}"...`);
+
+        // Show generating state immediately
+        frame.status = 'generating';
+        frame.imageUrls = []; // Clear old images
+        frame.selectedImageIndex = null;
+        frame.errorMessage = null;
+        this.refreshSingleFrameUI(index); // Update UI to generating
+
+        if (!window.app || !window.app.model) {
+            this.handleGenerationError(index, 'Gemini model not available for prompt rewrite.');
+            return;
+        }
+
+        try {
+            // {{ edit }} Simplified prompt slightly
+            const rewritePrompt = {
+                contents: [{
+                    role: 'user',
+                    parts: [{
+                        text: `Rewrite the following image generation prompt for an animation frame based ONLY on the user's request. Maintain the core subject, style, and frame number info, but incorporate the changes.
+
+Original Prompt:
+\`\`\`
+${frame.prompt}
+\`\`\`
+
+User's Request for Change: "${description}"
+${images.length > 0 ? `(User also provided ${images.length} new image(s) as reference.)` : ''}
+
+Generate ONLY the new, rewritten prompt text. Do not add explanations or conversational text.`
+                    }]
+                    // TODO: Add new image data parts if images were provided in the edit request
+                }],
+                generationConfig: {
+                    temperature: 0.6,
+                    maxOutputTokens: 1024
+                }
+            };
+             // {{ end edit }}
+
+            const result = await window.app.model.generateContent(rewritePrompt);
+            const newPrompt = result.response.text().trim();
+
+            if (!newPrompt || newPrompt.length < 20) { // Basic check for empty/failed rewrite
+                throw new Error("AI failed to generate a valid rewritten prompt.");
+            }
+
+            // Update the frame's prompt
+            frame.prompt = newPrompt;
+            // Add note to description
+            const editNote = `(Edited: ${description.substring(0, 30)}${description.length > 30 ? '...' : ''})`;
+            // Avoid adding duplicate notes
+            if (!frame.description.includes(editNote.substring(0, editNote.length - 4))) { // Check substring to ignore potential '...'
+                frame.description += ` ${editNote}`;
+            }
+
+
+            console.log(`Frame ${index + 1} prompt updated. Regenerating...`);
+            // this.addAIMessage(`Got the new prompt for frame ${index + 1}. Regenerating now.`); // AI response from analyzeAndExecuteFollowup covers this
+
+            // Refresh UI again with updated description (still generating)
+            this.refreshSingleFrameUI(index);
+
+            // Regenerate the frame with the new prompt
+            await this.generateImageWithGemini(index, true); // Treat edit as regeneration
+
+        } catch (error) {
+            console.error(`Error editing frame ${index + 1}:`, error);
+            this.handleGenerationError(index, `Failed to update prompt: ${error.message}`);
+            // Restore original description if edit failed? Maybe not, keep the note.
+             frame.description = frame.description.replace(/ \(edited:.*?\)/, '') + ' (Edit failed)';
+             this.refreshSingleFrameUI(index); // Refresh to show edit failed state
+        }
+    }
+    // --- END NEW ---
+
+    // --- MODIFIED: addNewFrame to use new AI analysis results ---
+    async addNewFrame(details = null, images = []) { // `details` might come from AI analysis
+        if (!this.currentPlan) return;
+
+        const newIndex = this.currentPlan.frameCount;
+
+        const addFrameBtn = document.querySelector('.add-frame-btn');
+        if (addFrameBtn) {
+            addFrameBtn.disabled = true;
+            addFrameBtn.classList.add('loading');
+            const btnSpan = addFrameBtn.querySelector('span');
+            if (btnSpan) btnSpan.textContent = `Creating frame ${newIndex + 1}...`;
+        }
+
+        try {
+            const previousFrame = newIndex > 0 ? this.currentPlan.frames[newIndex - 1] : null;
+            let description = `New frame ${newIndex + 1}`;
+            let elements = [];
+            let transition = "Final frame of the sequence"; // Assume adding to end
+
+            if (details) {
+                // If details were provided (e.g., parsed by the followup AI)
+                 description = `Frame ${newIndex + 1}: ${details}`;
+                 // We could call *another* AI here just to extract potential 'elements' and 'transition'
+                 // from the 'details' string, but let's keep it simpler for now.
+                 // Let generateFramePrompt handle the 'details' as the main description.
+                 elements = []; // Reset elements, rely on description
+                 transition = "Final frame"; // Assume transition is covered by description or default
+            } else if (previousFrame) {
+                // If no specific details, generate based on previous frame context
+                const result = await this.generateNextFrameWithAI(previousFrame, newIndex, this.currentPlan.frameCount + 1);
+                description = result.description;
+                elements = result.elements || [];
+                transition = result.transition || transition;
+            } else {
+                 // No details and no previous frame (first frame added manually?)
+                 description = `New Frame ${newIndex + 1}`;
+                 elements = [];
+                 transition = "Opening frame";
+            }
+
+
+            const prompt = this.generateFramePrompt(
+                this.currentPlan.prompt, // Base animation idea
+                description, // Generated or detailed description
+                newIndex,
+                this.currentPlan.frameCount + 1, // New total
+                elements, // May be empty if details were provided
+                transition
+            );
+
+            const newFrame = {
+                index: newIndex,
+                description: description,
+                elements: elements,
+                transition: transition,
+                prompt: prompt,
+                imageUrls: [],
+                selectedImageIndex: null,
+                status: 'pending'
+            };
+
+            this.currentPlan.frames.push(newFrame);
+            this.currentPlan.frameCount = this.currentPlan.frames.length;
+
+            // Toast is handled by the calling function's AI response usually
+            // this.showFrameActionToast(`Frame ${newIndex + 1} added`, 'add');
+            this.refreshAnimationPlan(); // This creates the new frame element
+
+            const newFrameElement = document.querySelector(`.prompter-frame[data-index="${newIndex}"]`);
+            if (newFrameElement) {
+                newFrameElement.classList.add('newly-added');
+                setTimeout(() => newFrameElement.classList.remove('newly-added'), 1500);
+                 // Scroll is handled here for adding to end
+                 newFrameElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+
+            // Delay generation slightly after scrolling
+            setTimeout(() => {
+                // Pass images to generation if they were provided for this add action
+                this.generateFrame(newIndex); // generateFrame needs modification to accept images if necessary
+                 // TODO: Adjust generateImageWithGemini to potentially accept *frame-specific* images
+                 // in addition to this.referenceImages if the 'images' array is passed here.
+            }, 500); // Increased delay slightly
+
+        } catch (error) {
+            console.error('Error creating new frame:', error);
+             // Basic fallback frame creation
+            const fallbackDesc = details ? `Frame ${newIndex + 1} based on: ${details}` : `New frame ${newIndex + 1}`;
+            const fallbackFrame = {
+                index: newIndex, description: fallbackDesc, elements: [], transition: "Final frame",
+                prompt: this.generateFramePrompt(this.currentPlan.prompt, fallbackDesc, newIndex, this.currentPlan.frameCount + 1, [], ""),
+                imageUrls: [], selectedImageIndex: null, status: 'pending'
+            };
+            this.currentPlan.frames.push(fallbackFrame);
+            this.currentPlan.frameCount = this.currentPlan.frames.length;
+            this.showFrameActionToast(`Frame ${newIndex + 1} added (basic - error)`, 'error'); // Show error toast
+            this.refreshAnimationPlan();
+            // Generate fallback
+             setTimeout(() => {
+                const newFrameElement = document.querySelector(`.prompter-frame[data-index="${newIndex}"]`);
+                if (newFrameElement) newFrameElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                this.generateFrame(newIndex);
+            }, 300);
+        } finally {
+            if (addFrameBtn) {
+                addFrameBtn.disabled = false;
+                addFrameBtn.classList.remove('loading');
+                // Restore original button HTML (ensure this HTML is correct)
+                 addFrameBtn.innerHTML = `
+                    <div class="add-frame-btn-content">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect>
+                            <line x1="12" y1="8" x2="12" y2="16"></line>
+                            <line x1="8" y1="12" x2="16" y2="12"></line>
+                    </svg>
+                        <span>Add Frame</span>
+                    </div>
+                `;
+            }
+        }
+    }
+    // --- END MODIFIED ---
+
+
+    // --- MODIFIED: addInBetweenFrame to use new AI analysis results ---
+    async addInBetweenFrame(prevIndex, nextIndex, details = null, images = []) { // `details` might come from AI analysis
+        if (!this.currentPlan || prevIndex < 0 || nextIndex > this.currentPlan.frameCount || prevIndex >= nextIndex) {
+             console.error('Invalid frame indices for in-between frame:', prevIndex, nextIndex);
+             this.addAIMessage('Internal error: Invalid indices for adding frame.', true);
+            return;
+        }
+
+        const prevFrame = this.currentPlan.frames[prevIndex];
+         // nextFrame is the one *currently* at nextIndex, which will be pushed back.
+        const nextFrame = this.currentPlan.frames[nextIndex]; // Can be undefined if inserting at end, but validation prevents that here.
+        const newIndex = nextIndex; // Insert at the position of the 'next' frame
+
+        // Find the button based on the *previous* index
+        const inBetweenBtn = document.querySelector(`.frame-insert-between[data-prev-index="${prevIndex}"]`);
+        if (inBetweenBtn) {
+            inBetweenBtn.classList.add('loading');
+        } else {
+            console.warn("Could not find in-between button for index", prevIndex);
+        }
+
+        try {
+            let description = `Transition frame ${newIndex + 1}`;
+            let elements = [];
+            let transition = "Smooth transition between frames";
+
+            if (details) {
+                description = `Frame ${newIndex + 1}: ${details}`;
+                // As before, could call AI to extract elements/transition, but keep simple for now
+                elements = [];
+                transition = `Transition based on: ${details.substring(0, 30)}...`;
+            } else if (prevFrame && nextFrame) {
+                // Generate description based on context if no details provided
+                const result = await this.generateInBetweenFrameDescriptionAI(prevFrame, nextFrame);
+                description = result.description;
+                elements = result.elements || [];
+                transition = result.transition || transition;
+            } else {
+                 // Should not happen due to index validation, but as a fallback:
+                 description = `Transition frame ${newIndex + 1}`;
+                 elements = [];
+                 transition = "Transition";
+            }
+
+
+            const prompt = this.generateFramePrompt(
+                this.currentPlan.prompt,
+                description,
+                newIndex,
+                this.currentPlan.frameCount + 1, // Total frames increases
+                elements,
+                transition
+            );
+
+            const newFrame = {
+                index: newIndex, // Gets inserted here, will be correct after splice
+                description: description,
+                elements: elements,
+                transition: transition,
+                prompt: prompt,
+                imageUrls: [], selectedImageIndex: null, status: 'pending'
+            };
+
+            this.currentPlan.frames.splice(newIndex, 0, newFrame); // Insert
+
+            // Update indices of subsequent frames *starting from the one AFTER the inserted frame*
+            for (let i = newIndex + 1; i < this.currentPlan.frames.length; i++) {
+                this.currentPlan.frames[i].index = i;
+                 // Optional: Update prompt frame numbers if needed
+                 // this.currentPlan.frames[i].prompt = this.updateFramePromptIndex(...);
+            }
+
+            this.currentPlan.frameCount = this.currentPlan.frames.length; // Update count
+
+             // AI response handles confirmation
+            // this.showFrameActionToast(`Frame added between ${prevIndex + 1} and ${nextIndex + 1}`, 'add');
+            this.refreshAnimationPlan(); // Re-render everything with new indices and buttons
+
+            // Highlight and scroll *after* refresh
+            const newFrameElement = document.querySelector(`.prompter-frame[data-index="${newIndex}"]`);
+            if (newFrameElement) {
+                newFrameElement.classList.add('newly-added');
+                 // Scroll is handled here
+                 newFrameElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                setTimeout(() => newFrameElement.classList.remove('newly-added'), 1500);
+            }
+
+            // Delay generation slightly after scrolling
+                setTimeout(() => {
+                // Generate (pass images if needed)
+                this.generateFrame(newIndex);
+                 // TODO: Adjust generateImageWithGemini for frame-specific images
+            }, 500); // Increased delay slightly
+
+        } catch (error) {
+            console.error('Error creating in-between frame:', error);
+             // Fallback frame creation
+             const fallbackDesc = details ? `Transition based on: ${details}` : `Transition between ${prevIndex + 1} and ${nextIndex + 1}`;
+             const fallbackFrame = {
+                index: newIndex, description: fallbackDesc, elements: [], transition: "Bridging transition",
+                prompt: this.generateFramePrompt(this.currentPlan.prompt, fallbackDesc, newIndex, this.currentPlan.frameCount + 1, [], ""),
+                imageUrls: [], selectedImageIndex: null, status: 'pending'
+             };
+             this.currentPlan.frames.splice(newIndex, 0, fallbackFrame);
+             // Update indices...
+             for (let i = newIndex + 1; i < this.currentPlan.frames.length; i++) this.currentPlan.frames[i].index = i;
+             this.currentPlan.frameCount = this.currentPlan.frames.length;
+             this.showFrameActionToast(`Basic transition frame added (error)`, 'error');
+             this.refreshAnimationPlan();
+             // Generate fallback
+             setTimeout(() => {
+                 const newFrameElement = document.querySelector(`.prompter-frame[data-index="${newIndex}"]`);
+                 if (newFrameElement) newFrameElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                 this.generateFrame(newIndex);
+             }, 300);
+        } finally {
+            if (inBetweenBtn) {
+                inBetweenBtn.classList.remove('loading');
+            }
+        }
+    }
+    // --- END MODIFIED ---
+
+
+    // --- REMOVED: Old generateFeedbackResponse ---
+    // async generateFeedbackResponse(hasImages = false, imageCount = 0) { ... }
+
+
+    // --- NEW: Simplified AI call for in-between frame description ---
+    async generateInBetweenFrameDescriptionAI(prevFrame, nextFrame) {
+        // This is a simplified version focused only on getting the description JSON
+         if (!window.app || !window.app.model) {
+             return { description: `Transition between frames ${prevFrame.index + 1} and ${nextFrame.index + 1}`, elements: [], transition: "Smooth transition" };
+         }
+        try {
+            const transitionFramePrompt = { /* ... (same prompt as before asking for JSON) ... */
+                  contents: [{
+                      role: 'user',
+                      parts: [{
+                          text: `I need a description for a transition frame between two existing animation frames.
+                          Overall concept: "${this.currentPlan.concept}"
+                          Previous Frame (${prevFrame.index + 1}): "${prevFrame.description}"
+                          Next Frame (${prevFrame.index + 2}): "${nextFrame.description}"
+                          Create a JSON object describing a logical transition frame:
+                          {
+                            "description": "Detailed description for the transition frame",
+                            "elements": ["key element 1", "key element 2"],
+                            "transition": "How this frame bridges the gap"
+                          }
+                          Only return the JSON.`
+                      }]
+                  }],
+                  generationConfig: { temperature: 0.7, maxOutputTokens: 500 }
+              };
+             const result = await window.app.model.generateContent(transitionFramePrompt);
+             const responseText = result.response.text();
+             const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+             if (jsonMatch) return JSON.parse(jsonMatch[0]);
+             throw new Error("No valid JSON for transition description");
+         } catch (error) {
+             console.error('Error generating in-between description:', error);
+             // Fallback
+             return { description: `Transition from frame ${prevFrame.index + 1} towards frame ${nextFrame.index + 1}`, elements: [], transition: "Basic transition" };
+         }
+     }
+    // --- END NEW ---
+
+    // --- REMOVED: generateExportMessage - Replaced by UI ---
+    // async generateExportMessage() { ... }
+
+    // --- REMOVED: generateStartGenerationMessage - Replaced by UI updates ---
+    // async generateStartGenerationMessage(frameCount) { ... }
+
+    // --- REMOVED: generateCompletionMessage - Replaced by UI updates ---
+    // async generateCompletionMessage() { ... }
+
+    // --- NEW METHOD: Show Frame Prompt Dialog ---
     showFramePromptDialog(index) {
         const frame = this.currentPlan.frames[index];
         if (!frame) return;
@@ -2879,7 +3517,7 @@ The style should be consistent with other frames in the sequence, with smooth tr
             // {{ edit }} Get the animation concept for context
             const animationConcept = this.currentPlan?.concept || "the user's animation";
             const animationPrompt = this.currentPlan?.prompt || "an animation"; // Get original prompt too
-
+            
             // Create a structured prompt for the completion message
             const completionPrompt = {
                 contents: [{
@@ -3056,88 +3694,6 @@ Remember, you're skilled but slightly impatient - write like someone who's compe
             }
             message += ` Want to generate all frames now or just update a specific one?`;
             return message;
-        }
-    }
-
-    // Method to generate message for GIF export progress
-    async generateExportMessage() {
-        try {
-            // Check if Gemini API is available
-            if (!window.app || !window.app.model) {
-                return `Creating your animation. Just a moment.
-
-<div class="prompter-loading">
-    <div class="prompter-loading-animation">
-        <div class="prompter-loading-dot"></div>
-        <div class="prompter-loading-dot"></div>
-        <div class="prompter-loading-dot"></div>
-    </div>
-</div>`;
-            }
-            
-            // Create a prompt for the export message
-            const exportPrompt = {
-                contents: [{
-                    role: 'user',
-                    parts: [
-                        {
-                            text: `You are a skilled but slightly impatient animation assistant with a touch of sarcasm. You have a distinctive personality - you're direct, occasionally snarky, but still helpful. You're good at what you do and you know it. You never use emojis or exclamation points excessively.
-
-The user has just requested to export their animation as a GIF.
-
-Write a brief message informing them that you're creating their animation. Your response must:
-1. Be very concise (1 sentence only)
-2. Have a hint of sarcasm or dry wit without being rude
-3. Tell them their animation is being created
-4. NOT use bullet points, numbered lists, or emojis
-5. NOT be overly enthusiastic 
-6. Use markdown formatting sparingly (bold or italic) only where it adds impact
-7. Sound like a real person with an edge, not a generic AI
-8. Avoid cringe phrases like "working my magic" or "please wait"
-
-Remember, you're skilled but slightly impatient - write like someone who's competent and gets straight to the point.`
-                        }
-                    ]
-                }],
-                generationConfig: {
-                    temperature: 0.7,
-                    topP: 0.9,
-                    topK: 40,
-                    maxOutputTokens: 100
-                }
-            };
-            
-            // Call the Gemini API
-            const result = await window.app.model.generateContent(exportPrompt);
-            
-            if (!result || !result.response) {
-                throw new Error('Failed to generate export message');
-            }
-            
-            // Extract the response text and add the loading animation HTML separately
-            const responseText = result.response.text();
-            return responseText + `
-
-<div class="prompter-loading">
-    <div class="prompter-loading-animation">
-        <div class="prompter-loading-dot"></div>
-        <div class="prompter-loading-dot"></div>
-        <div class="prompter-loading-dot"></div>
-    </div>
-</div>`;
-            
-        } catch (error) {
-            console.error('Error generating export message:', error);
-            // Return a fallback message with the required loading animation
-            return `Creating your animation. Just a moment.
-
-<div class="prompter-loading">
-    <div class="prompter-loading-animation">
-        <div class="prompter-loading-dot"></div>
-        <div class="prompter-loading-dot"></div>
-        <div class="prompter-loading-dot"></div>
-    </div>
-</div>`;
         }
     }
 
@@ -4118,10 +4674,6 @@ Only return the JSON structure without additional text.`
                 </div>
                 <div class="prompter-download-actions">
                     <button class="prompter-download-button cancel">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg >
-                        Cancel
-                    </button>
-                    <button class="prompter-download-button download" disabled>
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg >
                         Download Selected
                     </button>
@@ -4753,6 +5305,22 @@ Only return the JSON structure without additional text.`
 
 // Initialize the prompter when the page loads
 window.addEventListener('DOMContentLoaded', () => {
+    // Ensure app is initialized before prompter if there's dependency
+    // Check if app and app.init exist and if app initialization promise exists
+    if (window.app && typeof window.app.init === 'function' && window.app.initializationPromise) {
+         window.app.initializationPromise.then(() => {
+             console.log("App initialized, now initializing Prompter.");
     window.prompter = new Prompter();
-    window.prompter.init();
+             // window.prompter.init(); // Init is called in constructor now
+         }).catch(error => {
+            console.error("App initialization failed, Prompter may not function correctly:", error);
+            // Initialize prompter anyway, but it might lack API access
+             window.prompter = new Prompter();
+         });
+    } else {
+         // Fallback if app structure is different or doesn't have async init promise
+         console.warn("App structure or initialization promise not found. Initializing Prompter directly.");
+        window.prompter = new Prompter();
+        // window.prompter.init(); // Init is called in constructor now
+    }
 });
