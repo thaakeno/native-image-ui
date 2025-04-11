@@ -1174,7 +1174,7 @@ header h1 {
     background: transparent; /* Changed from rgba(0, 0, 0, 0.2) to fix gray space issue */
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
     transition: all 0.3s var(--animation-pop);
-    max-width: 500px;
+    /* Removed max-width: 500px; Let context define width */
     position: relative;
     cursor: pointer;
 }
@@ -1190,7 +1190,8 @@ header h1 {
     height: auto;
     transition: all 0.4s ease;
     max-height: 500px; /* Increased from 300px for larger images */
-    object-fit: contain; /* Changed from cover to contain to preserve aspect ratio */
+    object-fit: contain;
++    border-radius: inherit; /* Make image follow container radius */
 }
 
 .image-loading {
@@ -2675,7 +2676,7 @@ input:checked + .slider:before {
     background: transparent; /* Changed from rgba(0, 0, 0, 0.2) to fix gray space issue */
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
     transition: all 0.3s var(--animation-pop);
-    max-width: 500px;
+    /* Removed max-width: 500px; Let context define width */
     position: relative;
     cursor: pointer;
 }
@@ -2686,7 +2687,8 @@ input:checked + .slider:before {
     height: auto;
     transition: all 0.4s ease;
     max-height: 500px; /* Increased from 300px for larger images */
-    object-fit: contain; /* Changed from cover to contain to preserve aspect ratio */
+    object-fit: contain;
+    border-radius: inherit; /* Make image follow container radius */
 }
 
 /* Prompter Toggle Button */

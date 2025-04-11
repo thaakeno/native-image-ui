@@ -30,7 +30,9 @@ body:not(.carousel-enabled) .user-message .image-container {
     display: block;
     margin: 16px 0;
     width: auto;
-    max-width: min(600px, 100%);
+    max-width: 350px;
+    background: none;
+    box-shadow: none;
 }
 
 /* Make sure AI generated images and user uploaded images have the same styling when not in carousel */
@@ -39,6 +41,16 @@ body:not(.carousel-enabled) .user-message .image-container {
     max-width: 100%;
     border-radius: 12px;
     object-fit: contain;
+}
+
+/* Special case for AI message images (not in carousel) */
+.ai-message .image-container:not(.in-carousel) {
+    display: block; /* Ensure block display */
+    margin: 16px 0;
+    width: auto; /* Let the image determine the width */
+    max-width: 450px; /* Okay, fine, 450px */
+    background: none; /* Remove container background */
+    box-shadow: none; /* Remove container shadow */
 }
 
 .image-actions {
