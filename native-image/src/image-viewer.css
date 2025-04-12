@@ -30,7 +30,6 @@ body:not(.carousel-enabled) .user-message .image-container {
     display: block;
     margin: 16px 0;
     width: auto;
-    max-width: 350px;
     background: none;
     box-shadow: none;
 }
@@ -48,9 +47,23 @@ body:not(.carousel-enabled) .user-message .image-container {
     display: block; /* Ensure block display */
     margin: 16px 0;
     width: auto; /* Let the image determine the width */
-    max-width: 450px; /* Okay, fine, 450px */
     background: none; /* Remove container background */
     box-shadow: none; /* Remove container shadow */
+}
+
+/* Constrain the message bubble width when it contains a single image */
+.user-message:not(:has(.image-carousel)):has(.image-container:not(.in-carousel)) {
+    max-width: 450px; /* Apply max-width to the bubble */
+    /* Ensure alignment */
+    margin-left: auto;
+    margin-right: 0; /* Reset right margin */
+}
+
+.ai-message:not(:has(.image-carousel)):has(.image-container:not(.in-carousel)) {
+    max-width: 450px; /* Apply max-width to the bubble */
+    /* Ensure alignment */
+    margin-right: auto;
+    margin-left: 0; /* Reset left margin */
 }
 
 .image-actions {
