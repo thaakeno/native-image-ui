@@ -5677,8 +5677,9 @@
 
 /* Adjust retry button style */
 .prompter-retry-btn {
-    /* ... existing styles ... */
     transition: all 0.3s cubic-bezier(0.19, 1, 0.22, 1);
+    opacity: 1; 
+    pointer-events: auto;
 }
 
 .prompter-retry-btn:hover {
@@ -6893,4 +6894,81 @@
 .frames-grid-layout .frame-insert-between-wrapper {
     display: none; /* Hide completely in grid layout */
 }
+
+/* --- Edit Image Button Styles --- */
+.edit-image-btn {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.8); /* Start smaller */
+    opacity: 0;
+    background: rgba(0, 0, 0, 0.65); /* Slightly darker, less blue */
+    backdrop-filter: blur(6px); /* Add blur */
+    -webkit-backdrop-filter: blur(6px);
+    color: #e0e0e0; /* Softer white */
+    border: 1px solid rgba(255, 255, 255, 0.1); /* Subtle border */
+    border-radius: 12px; /* Less rounded */
+    padding: 8px 16px; /* Adjust padding */
+    display: flex;
+    align-items: center;
+    gap: 8px; /* Adjust gap */
+    font-size: 14px; /* Smaller font */
+    font-weight: 500;
+    cursor: pointer;
+    z-index: 20;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.25);
+    /* Smoother transition */
+    transition: opacity 0.2s cubic-bezier(0.4,0,0.2,1), 
+                transform 0.2s cubic-bezier(0.4,0,0.2,1), 
+                background-color 0.2s ease,
+                box-shadow 0.2s ease; 
+    pointer-events: none; /* Hide initially */
+}
+
+.prompter-frame-image-placeholder {
+    position: relative; /* Ensure positioning context */
+    overflow: hidden; /* Keep button contained */
+}
+
+.prompter-frame-image-placeholder:hover .edit-image-btn {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1); /* Scale up to normal size */
+    pointer-events: auto; /* Enable click */
+}
+
+.edit-image-btn svg {
+    width: 18px; /* Smaller icon */
+    height: 18px;
+    margin-right: 0; /* Remove extra margin */
+    filter: drop-shadow(0 1px 1px rgba(0,0,0,0.2));
+    transition: transform 0.2s ease;
+}
+
+.edit-image-btn:hover {
+    background: rgba(var(--text-accent-rgb, 114,137,218), 0.85); /* Use accent color on hover */
+    color: #fff;
+    transform: translate(-50%, -50%) scale(1.05); /* Slightly larger hover scale */
+    box-shadow: 0 8px 25px rgba(var(--text-accent-rgb, 114,137,218), 0.25);
+}
+
+/* Subtle icon wiggle on hover */
+.edit-image-btn:hover svg {
+    transform: scale(1.1) rotate(5deg); 
+}
+
+.edit-image-btn span {
+    font-size: 14px; /* Match button font size */
+    font-weight: 500;
+    letter-spacing: 0.01em;
+}
+
+/* Hide the button by default, only show on hover */
+.edit-image-btn {
+    pointer-events: none;
+}
+.prompter-frame-image-placeholder:hover .edit-image-btn {
+    pointer-events: auto;
+}
+
+/* ... existing code ... */
 

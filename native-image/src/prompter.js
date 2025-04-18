@@ -5,7 +5,7 @@
 class Prompter {
     constructor() {
         // Core state
-        this.isActive = localStorage.getItem('prompterActive') === 'true';
+        this.isActive = false; // Always start inactive on page load
         this.selectedImages = [];
         this.referenceImages = []; // Initialize array for storing reference images
         this.currentPlan = null;
@@ -462,6 +462,8 @@ class Prompter {
         if (this.isActive) {
             // Turn it off
             this.isActive = false;
+            // Save state to localStorage
+            localStorage.setItem('prompterActive', 'false');
             console.log('DEBUG: Prompter is now inactive');
             
             // Update the input placeholder text and UI
@@ -476,6 +478,8 @@ class Prompter {
         } else {
             // Turn it on
             this.isActive = true;
+            // Save state to localStorage
+            localStorage.setItem('prompterActive', 'true');
             console.log('DEBUG: Prompter is now active');
             
             // Update the input placeholder text and UI
@@ -4447,6 +4451,12 @@ Only return the JSON structure without additional text.`
         // Update classes
         frameElement.className = `prompter-frame ${frame.status === 'generating' ? 'generating' : ''} ${frame.status === 'error' ? 'error' : ''}`;
 
+        // Update description text
+        const descriptionElement = frameElement.querySelector('.prompter-frame-description');
+        if (descriptionElement) {
+            descriptionElement.textContent = frame.description || '';
+        }
+
         // Update placeholder
         const placeholder = frameElement.querySelector('.prompter-frame-image-placeholder');
         if (placeholder) {
@@ -4462,19 +4472,16 @@ Only return the JSON structure without additional text.`
                             <line x1="12" y1="8" x2="12.01" y2="8"></line>
                         </svg>
                     </div>
-                    ${frame.imageUrls.length > 1 ? `
-                    <div class="prompter-frame-multi-image-indicator" title="${frame.imageUrls.length} images available">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><rect x="7" y="7" width="10" height="10" rx="1"/>
+                    <button class="edit-image-btn" title="Edit this image">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 20h9"/>
+                            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>
                         </svg>
-                        <span>${frame.imageUrls.length}</span>
-                    </div>
-                    ` : ''}
+                        <span>Edit Image</span>
+                    </button>
                  `;
-             // --- END MODIFIED ---
              }
              else if (frame.status === 'generating') {
-                 // Use the magical loading animation here too
                  placeholderContent = `<div class="prompter-magical-loading">Generating...</div>`;
              }
              else if (frame.status === 'error') {
@@ -4525,6 +4532,17 @@ Only return the JSON structure without additional text.`
                      toggleBtn.dataset.listenerAttached = 'true';
                  }
              }
+
+             // --- NEW: Add Edit Image button handler ---
+             if (frame.status === 'complete' && frame.imageUrls.length > 0) {
+                 const editImageBtn = placeholder.querySelector('.edit-image-btn');
+                 if (editImageBtn) {
+                     editImageBtn.addEventListener('click', (e) => {
+                         e.stopPropagation();
+                         this.openEditImageDialog(index);
+                     });
+                 }
+             }
         }
 
         // Update actions
@@ -4538,7 +4556,7 @@ Only return the JSON structure without additional text.`
                     <button class="prompter-frame-button prompter-edit-btn" data-index="${index}">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                            <path d="M18.5 3.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                         </svg>
                         <span>Edit Prompt</span>
                     </button>
@@ -4593,7 +4611,6 @@ Only return the JSON structure without additional text.`
             this.updateGeneratingAnimation(index);
         }
     }
-    // --- END ADDED ---
 
     // --- NEW METHOD: Show Image Download UI ---
     showImageDownloadUI() {
@@ -4900,7 +4917,6 @@ Do not include any text outside this JSON structure.`
             ];
         }
     }
-    // --- END ADDED ---
 
     // Add a method to preload and validate images before creating the GIF
     async preloadImages(imageUrls) {
@@ -5317,7 +5333,7 @@ Only return the JSON structure without additional text.`
                     <h3 class="prompter-dialog-title">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                            <path d="M18.5 3.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                         </svg> Edit Frame ${index + 1}
                     </h3>
                     <button class="prompter-dialog-close">
@@ -5435,6 +5451,183 @@ Only return the JSON structure without additional text.`
         
         // Focus the textarea
         setTimeout(() => textArea.focus(), 100);
+    }
+
+    // --- NEW: Open Edit Image Dialog ---
+    openEditImageDialog(index) {
+        const frame = this.currentPlan.frames[index];
+        if (!frame) return;
+        // Create dialog for editing the image description
+        const dialog = document.createElement('div');
+        dialog.className = 'prompter-dialog edit-image-dialog';
+        dialog.innerHTML = `
+            <div class="prompter-dialog-overlay"></div>
+            <div class="prompter-dialog-content">
+                <div class="prompter-dialog-header">
+                    <h3 class="prompter-dialog-title">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 20h9"/>
+                            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>
+                        </svg> Edit Image (Frame ${index + 1})
+                    </h3>
+                    <button class="prompter-dialog-close">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+                <div class="prompter-dialog-body">
+                    <div class="prompter-prompt-instructions">Describe the changes you want to make to the current image.</div>
+                    <div class="prompter-textarea-container">
+                        <textarea class="prompter-dialog-textarea" id="edit-image-description-editor" placeholder="e.g., 'Make the car red', 'Add sunglasses to the character', 'Change the background to nighttime'"></textarea>
+                    </div>
+                    <div class="prompter-prompt-tips">
+                        <div class="prompter-tip-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="12" y1="16" x2="12" y2="12"></line>
+                                <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                            </svg>
+                        </div>
+                        <div class="prompter-tip-text">
+                            The AI will attempt to edit the current image based on your instructions, keeping the overall style consistent.
+                        </div>
+                    </div>
+                </div>
+                <div class="prompter-dialog-actions">
+                    <button class="prompter-dialog-button prompter-dialog-cancel">Cancel</button>
+                    <button class="prompter-dialog-button prompter-dialog-save">Save & Edit Image</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(dialog);
+        const closeDialog = () => {
+            dialog.classList.remove('active');
+            setTimeout(() => {
+                dialog.remove();
+            }, 300);
+        };
+        requestAnimationFrame(() => {
+            dialog.classList.add('active');
+        });
+        const closeBtn = dialog.querySelector('.prompter-dialog-close');
+        const cancelBtn = dialog.querySelector('.prompter-dialog-cancel');
+        const saveBtn = dialog.querySelector('.prompter-dialog-save');
+        const overlay = dialog.querySelector('.prompter-dialog-overlay');
+        const textArea = dialog.querySelector('.prompter-dialog-textarea');
+        if (closeBtn) closeBtn.addEventListener('click', closeDialog);
+        if (cancelBtn) cancelBtn.addEventListener('click', closeDialog);
+        if (overlay) overlay.addEventListener('click', closeDialog);
+        if (saveBtn) {
+            saveBtn.addEventListener('click', async () => {
+                const editInstruction = textArea.value.trim();
+                if (!editInstruction) {
+                    textArea.classList.add('error');
+                    setTimeout(() => textArea.classList.remove('error'), 500);
+                    return; // Still return early if no instruction
+                }
+
+                // --- CHANGE: Close the dialog *first* ---
+                closeDialog(); 
+
+                // --- THEN call the edit function (don't need await here anymore unless
+                //     you want to block further interaction, but the dialog is closed) ---
+                this.editImageWithAI(index, editInstruction); 
+
+                // Note: The editImageWithAI function already handles setting the frame 
+                // status to 'generating' and refreshing the UI.
+            });
+        }
+        const escListener = (e) => {
+            if (e.key === 'Escape') {
+                closeDialog();
+                document.removeEventListener('keydown', escListener);
+            }
+        };
+        document.addEventListener('keydown', escListener);
+        setTimeout(() => textArea.focus(), 100);
+    }
+
+    // --- NEW: Edit the image in-place using AI ---
+    async editImageWithAI(index, editInstruction) {
+        const frame = this.currentPlan.frames[index];
+        if (!frame || !frame.imageUrls || !frame.imageUrls.length) return;
+
+        frame.status = 'generating';
+        frame.errorMessage = null;
+        this.refreshSingleFrameUI(index);
+
+        const editPrompt = `Edit the provided image based on the following instruction: "${editInstruction}".
+
+Original Context: The image depicts "${frame.description || 'a frame in an animation'}".
+
+Maintain the overall style, lighting, and composition consistent with the original image, only applying the requested changes. Output ONLY the modified image, no text.`;
+
+        const currentImageData = await this.getImageDataFromUrl(frame.imageUrls[frame.selectedImageIndex]);
+        const promptParts = [
+            { text: editPrompt },
+            { inlineData: { mimeType: 'image/png', data: currentImageData } }
+        ];
+
+        try {
+            this.updateGeneratingAnimation(index);
+            console.log(`DEBUG: Sending edit request for frame ${index + 1} with instruction: "${editInstruction}"`);
+
+            const structuredPrompt = {
+                contents: [{ role: 'user', parts: promptParts }],
+                generationConfig: {
+                    temperature: 0.6,
+                    topP: 0.95,
+                    topK: 40,
+                    maxOutputTokens: 8192,
+                    responseModalities: ["image", "text"],
+                    responseMimeType: "text/plain"
+                },
+                model: 'gemini-2.0-flash-exp-image-generation'
+            };
+
+            const result = await window.app.model.generateContent(structuredPrompt);
+
+            if (result && result.response && result.response.candidates && result.response.candidates[0] && result.response.candidates[0].content && result.response.candidates[0].content.parts) {
+                const parts = result.response.candidates[0].content.parts;
+                const imageParts = parts.filter(part => part.inlineData && part.inlineData.mimeType && part.inlineData.mimeType.startsWith('image/'));
+
+                if (imageParts.length > 0) {
+                    frame.imageUrls = [`data:${imageParts[0].inlineData.mimeType};base64,${imageParts[0].inlineData.data}`];
+                    frame.selectedImageIndex = 0;
+                    frame.status = 'complete';
+                    frame.errorMessage = null;
+                    this.refreshSingleFrameUI(index);
+                    this.checkAllFramesComplete();
+                    console.log(`DEBUG: Image edit for frame ${index + 1} successful.`);
+                    return true;
+                } else {
+                    const textPart = parts.find(part => part.text);
+                    const errorText = textPart ? `Edit failed. API returned text: "${textPart.text.substring(0, 100)}..."` : 'Edit failed: No image was generated.';
+                    this.handleGenerationError(index, errorText);
+                    return false;
+                }
+            } else {
+                let errorReason = 'Failed to edit image. Unknown API response.';
+                if (result?.response?.promptFeedback?.blockReason) {
+                    errorReason = `Edit blocked: ${result.response.promptFeedback.blockReason}. Please revise your edit instruction.`;
+                } else if (!result?.response?.candidates?.length) {
+                    errorReason = 'Failed to edit image. API returned no candidates.';
+                }
+                this.handleGenerationError(index, errorReason);
+                return false;
+            }
+        } catch (error) {
+            console.error('Error editing image with Gemini:', error);
+            this.handleGenerationError(index, `Error: ${error.message || 'Unknown error during editing'}`);
+            return false;
+        } finally {
+             if (this.animationIntervals[index]) {
+                clearInterval(this.animationIntervals[index]);
+                this.animationIntervals[index] = null;
+            }
+        }
     }
 }
 
