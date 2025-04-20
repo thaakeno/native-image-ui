@@ -462,62 +462,55 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 60px 20px;
+    padding: 80px 20px 60px 20px;
     height: 100%;
     color: var(--text-muted);
     text-align: center;
-    transition: all 0.3s ease;
+    background: linear-gradient(135deg, rgba(var(--background-secondary-rgb), 0.7) 0%, rgba(var(--background-primary-rgb), 0.9) 100%);
+    border-radius: 18px;
+    box-shadow: 0 6px 32px 0 rgba(0,0,0,0.10);
+    margin: 32px 24px;
+    min-height: 340px;
+    max-width: 420px;
+    margin-left: auto;
+    margin-right: auto;
+    animation: fadeIn 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .template-empty svg {
-    width: 60px;
-    height: 60px;
-    margin-bottom: 20px;
-    opacity: 0.4;
+    width: 64px;
+    height: 64px;
+    margin-bottom: 28px;
+    opacity: 0.7;
     color: var(--text-accent);
-    transition: all 0.3s ease;
+    filter: drop-shadow(0 2px 8px rgba(var(--text-accent-rgb), 0.15));
+    transition: color 0.2s;
 }
 
 .template-empty-text {
-    font-size: 18px;
-    margin-bottom: 12px;
-    font-weight: 600;
+    font-size: 22px;
+    margin-bottom: 14px;
+    font-weight: 700;
     color: var(--text-normal);
+    letter-spacing: 0.01em;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.04);
 }
 
 .template-empty-desc {
-    font-size: 14px;
-    opacity: 0.8;
-    max-width: 80%;
-    margin: 0 auto 30px auto;
-    line-height: 1.5;
+    font-size: 15px;
+    opacity: 0.85;
+    max-width: 90%;
+    margin: 0 auto;
+    line-height: 1.7;
+    color: var(--text-muted);
+    font-weight: 500;
+    letter-spacing: 0.01em;
 }
 
-.template-create-btn {
-    background: var(--text-accent);
-    border: none;
-    color: white;
-    border-radius: 8px;
-    padding: 10px 22px;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    box-shadow: 0 4px 10px rgba(var(--text-accent-rgb), 0.25);
-}
-
-.template-create-btn:hover {
-    background: var(--text-accent-hover);
-    box-shadow: 0 6px 15px rgba(var(--text-accent-rgb), 0.35);
-    transform: translateY(-3px) scale(1.03);
-}
-
-.template-create-btn svg {
-    width: 16px;
-    height: 16px;
+/* Remove the button entirely */
+.template-empty .templates-create-btn,
+.template-empty button {
+    display: none !important;
 }
 
 /* Template Form - Editor Panel */
