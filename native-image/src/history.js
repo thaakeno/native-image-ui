@@ -141,7 +141,7 @@ class ChatHistory {
                         <polyline points="3 6 5 6 21 6"></polyline>
                         <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
                     </svg>
-                    Clear All
+                    Clear Unpinned
                 </button>
             </div>
         `;
@@ -683,26 +683,55 @@ class ChatHistory {
     }
     
     clearAllHistory() {
-        // Calculate total size before clearing
-        const totalSize = this.totalStorageSize;
-        const formattedSize = this.formatBytes(totalSize);
+        // Filter out pinned and favorited conversations that will be kept
+        const keptConversations = this.conversations.filter(c => c.pinned || c.favorite);
+        const conversationsToDelete = this.conversations.filter(c => !c.pinned && !c.favorite);
         
-        if (!confirm(`Are you sure you want to delete all conversations? This will free up ${formattedSize} and cannot be undone.`)) return;
+        // If nothing to delete, show a message and return
+        if (conversationsToDelete.length === 0) {
+            alert("There are no unpinned or unfavorited conversations to clear.");
+            return;
+        }
         
-        this.conversations = [];
-        this.currentConversationId = null;
+        // Calculate size of only the conversations being deleted
+        let sizeToFree = 0;
+        conversationsToDelete.forEach(conv => {
+            sizeToFree += this.calculateConversationSize(conv);
+        });
+        const formattedSize = this.formatBytes(sizeToFree);
+        
+        // Create a more descriptive confirmation message
+        const confirmMessage = keptConversations.length > 0 
+            ? `Are you sure you want to delete all unpinned and unfavorited conversations? This will free up ${formattedSize}. Your ${keptConversations.length} pinned/favorited conversation(s) will be preserved.`
+            : `Are you sure you want to delete all conversations? This will free up ${formattedSize} and cannot be undone.`;
+        
+        if (!confirm(confirmMessage)) return;
+        
+        // Keep only pinned and favorited conversations
+        this.conversations = keptConversations;
+        
+        // Reset current conversation ID only if it was one of the deleted ones
+        if (this.currentConversationId && conversationsToDelete.some(c => c.id === this.currentConversationId)) {
+            this.currentConversationId = null;
+            this.app.clearChat(true);
+        }
+        
         this.saveToStorage();
         this.renderConversationsList();
-        this.app.clearChat(true);
         
-        // Update storage size to zero
-        this.totalStorageSize = 0;
-        this.updateStorageSizeDisplay();
+        // Recalculate total storage size after deletion
+        this.calculateTotalStorageSize();
         
-        // Show notification about freed space
-        this.showStorageNotification(`Freed up ${formattedSize} of storage`);
+        // Show notification about freed space with context about kept items
+        const notificationMessage = keptConversations.length > 0
+            ? `Freed up ${formattedSize} of storage. Kept ${keptConversations.length} pinned/favorited item(s).`
+            : `Freed up ${formattedSize} of storage`;
+        this.showStorageNotification(notificationMessage);
         
-        this.debugLog('Cleared all conversation history');
+        this.debugLog('Cleared conversation history except pinned/favorited items', {
+            deleted: conversationsToDelete.length,
+            kept: keptConversations.length
+        });
     }
     
     toggleFavorite(id) {
