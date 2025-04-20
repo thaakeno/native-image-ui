@@ -2349,6 +2349,15 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     app.showImagePreviews = showImagePreviews;
+    
+    // Add function to clear uploaded images
+    app.clearUploadedImages = function() {
+        uploadedImages = [];
+        const previewContainer = document.querySelector('.image-preview-container');
+        if (previewContainer) {
+            previewContainer.remove();
+        }
+    };
 
     // Log initialization info
     if (config.debugMode) {
