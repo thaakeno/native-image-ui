@@ -578,6 +578,7 @@
     will-change: transform;
     backface-visibility: hidden;
     -webkit-overflow-scrolling: touch;
+    background: var(--background-primary);
 }
 
 .template-form-body::-webkit-scrollbar {
@@ -867,6 +868,12 @@
     cursor: pointer;
     transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
     box-shadow: 0 2px 5px rgba(var(--text-accent-rgb), 0.3);
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    overflow: hidden;
 }
 
 .template-save:hover {
@@ -875,13 +882,36 @@
     transform: translateY(-2px) scale(1.02);
 }
 
+.template-save:disabled {
+    opacity: 0.7;
+    cursor: default;
+    transform: none;
+}
+
+.template-save.saving {
+    background: rgba(var(--text-accent-rgb), 0.7);
+}
+
+.template-save.success {
+    background: #4caf50;
+}
+
+.template-save .spinner {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
 /* Storage cleared popup */
 .storage-cleared-popup {
     position: fixed;
     bottom: 30px;
     left: 50%;
     transform: translate(-50%, 100px);
-    background: rgba(var(--background-primary-rgb), 0.95);
+    background: var(--background-primary);
     border-radius: 12px;
     padding: 5px;
     z-index: 10100;
@@ -889,8 +919,6 @@
     opacity: 0;
     transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
     pointer-events: none;
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
 }
 
 .storage-cleared-popup.active {
@@ -899,7 +927,7 @@
 }
 
 .popup-content {
-    background: rgba(var(--background-secondary-rgb), 0.3);
+    background: var(--background-secondary);
     border-radius: 8px;
     padding: 20px;
     display: flex;
@@ -1172,4 +1200,38 @@
         padding: 6px 12px;
         font-size: 12px;
     }
+}
+
+/* Success message styling */
+.template-success-message {
+    position: absolute;
+    top: 80px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-20px);
+    background: var(--text-accent);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.4s cubic-bezier(0.2, 0.9, 0.3, 1);
+    z-index: 11000;
+    max-width: 90%;
+}
+
+.template-success-message.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+.template-success-message svg {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
 } 

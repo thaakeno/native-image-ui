@@ -821,6 +821,7 @@ class TemplateManager {
     async saveTemplateFromForm() {
         const nameInput = this.templatesForm.querySelector('#template-name');
         const textInput = this.templatesForm.querySelector('#template-text');
+        const saveButton = this.templatesForm.querySelector('.template-save');
         
         const name = nameInput.value.trim();
         const text = textInput.value.trim();
@@ -830,6 +831,18 @@ class TemplateManager {
             nameInput.focus();
             return;
         }
+
+        // Show saving indicator on button
+        const originalButtonText = saveButton.textContent;
+        saveButton.innerHTML = `
+            <svg class="spinner" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <path d="M12 6v2"></path>
+            </svg>
+            Saving...
+        `;
+        saveButton.disabled = true;
+        saveButton.classList.add('saving');
 
         const templateData = {
             id: this.currentTemplate ? this.currentTemplate.id : null,
@@ -845,6 +858,9 @@ class TemplateManager {
             this.updateStorageDisplay(); // Update the display
             this.renderTemplatesList();
             
+            // Show success message
+            this.showSuccessMessage(this.currentTemplate ? `Template "${name}" updated` : `Template "${name}" created`);
+            
             // Don't hide the form - reset it for a new template
             // Clear form for a new template
             nameInput.value = '';
@@ -857,15 +873,36 @@ class TemplateManager {
             // Update form title back to create mode
             const formTitle = this.templatesForm.querySelector('.template-form-header h3');
             const editIcon = this.templatesForm.querySelector('.edit-indicator-icon');
-            const saveButton = this.templatesForm.querySelector('.template-save');
             
             if (formTitle) formTitle.textContent = 'Create New Template';
             if (editIcon) editIcon.style.display = 'none';
-            if (saveButton) saveButton.textContent = 'Create Template';
+            
+            // Reset button state with success indication
+            saveButton.classList.remove('saving');
+            saveButton.classList.add('success');
+            saveButton.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg>
+                Saved!
+            `;
+            
+            // Reset button after delay
+            setTimeout(() => {
+                saveButton.classList.remove('success');
+                saveButton.disabled = false;
+                saveButton.textContent = 'Create Template';
+            }, 1500);
             
         } catch (error) {
             console.error('Error saving template from form:', error);
             alert('Failed to save template. Check console for details.');
+            
+            // Reset button on error
+            saveButton.classList.remove('saving');
+            saveButton.disabled = false;
+            saveButton.textContent = originalButtonText;
         }
     }
     
@@ -989,6 +1026,34 @@ class TemplateManager {
         if (storageElement) {
             storageElement.textContent = `${this.calculateStorageUsed()} MB`;
         }
+    }
+
+    // Add a method to show success message
+    showSuccessMessage(message) {
+        // Create message element if it doesn't exist
+        let successMsg = this.templatesModal.querySelector('.template-success-message');
+        if (!successMsg) {
+            successMsg = document.createElement('div');
+            successMsg.className = 'template-success-message';
+            this.templatesModal.appendChild(successMsg);
+        }
+        
+        // Set message content with icon
+        successMsg.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+            </svg>
+            <span>${message}</span>
+        `;
+        
+        // Show the message
+        successMsg.classList.add('show');
+        
+        // Hide after delay
+        setTimeout(() => {
+            successMsg.classList.remove('show');
+        }, 3000);
     }
 }
 
