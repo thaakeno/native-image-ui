@@ -2388,24 +2388,19 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     function startNewChat() {
-        // Clear the current conversation
-        app.clearChat(true); // true = reset history
-
-        // Reset current conversation ID if history manager exists
-        if (historyManager) {
-            // IMPORTANT: This conversation shouldn't be saved
-            historyManager.currentConversationId = null;
-            
-            // Force update UI if history panel is open
-            if (historyManager.historyPanel && historyManager.historyPanel.classList.contains('open')) {
-                historyManager.renderConversationsList();
-            }
-            
-            debugLog('Started new chat from button', { 
-                conversationId: null,
-                historyLength: chatHistory.length
-            });
+        clearChat(true); // Clear the visual chat and history
+        // --- ADDED: Deactivate and reset prompter if it exists ---
+        if (window.prompter && window.prompter.isActive) {
+            window.prompter.deactivateAndReset();
+            debugLog('Prompter deactivated and reset for new chat.');
         }
+        // --- END ADDED ---
+        currentConversationId = null; // Ensure no association with old history ID
+        lastUserMessageElement = null; // Reset last user message tracking
+        document.getElementById('user-input').focus();
+        debugLog('Started new chat session.');
+        // Optionally, display welcome message again if needed
+        // showWelcomeMessage();
     }
 
     // System Instructions Button

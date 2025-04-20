@@ -29,7 +29,7 @@ class Prompter {
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', () => this.init());
         } else {
-            this.init();
+        this.init();
         }
     }
 
@@ -5632,6 +5632,50 @@ Maintain the overall style, lighting, and composition consistent with the origin
             }
         }
     }
+
+    // --- ADDED: Method to fully deactivate and reset the prompter ---
+    deactivateAndReset() {
+        console.log('Deactivating and resetting Prompter...');
+        this.isActive = false;
+        this.selectedImages = [];
+        this.referenceImages = [];
+        this.currentPlan = null;
+        this.lastFollowupAnalysis = null;
+        this.lastUserFollowup = null;
+        this.isGeneratingAllFrames = false;
+        this.completionMessageShown = false;
+        this.welcomeMessageShown = false;
+
+        // Clear analysis history from localStorage
+        localStorage.removeItem('prompterLastAnalysis');
+        localStorage.removeItem('prompterLastUserFollowup');
+
+        // Remove any existing animation plan message
+        const existingPlan = document.querySelector('.animation-plan-message');
+        if (existingPlan) {
+            existingPlan.remove();
+        }
+
+        // Remove the status label explicitly
+        this.removeStatusLabel(); // Assuming you have or will add this helper
+
+        // Update button and input placeholder
+        this.updateInputPlaceholder(false);
+        this.updatePrompterButtonState('idle'); // Reset button state
+
+        // Maybe trigger an event or callback if other parts of the app need to know
+        // For now, just log it.
+        console.log('Prompter deactivated and reset.');
+    }
+
+    // --- ADDED: Helper to specifically remove the status label ---
+    removeStatusLabel() {
+        const existingLabel = document.querySelector('.prompter-status-label');
+        if (existingLabel) {
+            existingLabel.remove();
+        }
+    }
+    // --- END ADDED ---
 }
 
 // Initialize the prompter when the page loads
