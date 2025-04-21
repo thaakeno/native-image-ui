@@ -42,7 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Image upload variables
     let uploadedImages = [];
     const MAX_IMAGES = 8;
-    const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+    const MAX_FILE_SIZE = 15 * 1024 * 1024; // 15MB
     const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'];
 
     // Configure marked renderer with syntax highlighting
@@ -65,7 +65,7 @@ document.addEventListener('DOMContentLoaded', () => {
         temperature: parseFloat(localStorage.getItem('temperature')) || 1.0,
         maxOutputTokens: parseInt(localStorage.getItem('maxOutputTokens')) || 8192,
         debugMode: localStorage.getItem('debugMode') === 'true' || false,
-        tactileMode: localStorage.getItem('tactileMode') === 'true' || false,
+        tactileMode: localStorage.getItem('tactileMode') === 'true' || true,
         systemInstruction: localStorage.getItem('systemInstruction') || DEFAULT_SYSTEM_INSTRUCTION,
         carouselEnabled: localStorage.getItem('carouselEnabled') !== 'false' // Default to true if not set
     };
@@ -378,7 +378,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Check file size
             if (blob.size > MAX_FILE_SIZE) {
-                showError('Pasted image exceeds 5MB limit');
+                showError('Pasted image exceeds 15MB limit');
                 return;
             }
 
@@ -609,7 +609,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 // Check file size
                 if (file.size > MAX_FILE_SIZE) {
-                    showError(`${file.name} exceeds 5MB limit`);
+                    showError(`${file.name} exceeds 15MB limit`);
                     continue;
                 }
                 
