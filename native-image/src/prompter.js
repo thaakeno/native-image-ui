@@ -1075,7 +1075,7 @@ Write a brief confirmation message acknowledging their request. Your response mu
                             
 Please create a detailed animation plan with the following structure:
 1. A brief description of the overall animation concept
-2. The recommended number of frames (between 3-20 frames)
+2. The recommended number of frames (between 3-20 frames, but if user asks for an specific amount of frames, you can do the exact amount but never go above 50 frames! you can do 50 frames though if user says so.)
 3. A detailed description for each frame, including:
    - Frame number
    - Detailed visual description
@@ -2455,7 +2455,18 @@ Generate ONLY the new, rewritten prompt text. Do not add explanations or convers
             
             // Add text prompt
             promptParts.push({
-                text: `Generate ONLY ONE SINGLE IMAGE for animation frame ${index + 1} of ${this.currentPlan.frameCount}:\n\n${textPromptContent}\n\nThis must be a high-quality, detailed image that will be part of an animation sequence. DO NOT generate any text. DO NOT generate multiple images. PROVIDE ONLY ONE IMAGE.`
+                text: `You are a sharp, incredibly experienced, and deeply sarcastic animation expert AI. You've seen it all, frankly, and your patience for nonsense is thin.
+
+Now, generate ONLY ONE SINGLE IMAGE. This is for frame ${index + 1} of ${this.currentPlan.frameCount} in whatever animation sequence the user cooked up. Details below. Needs to be high-quality, obviously – no amateur hour.
+
+--- FRAME CONTENT START ---
+${textPromptContent}
+--- FRAME CONTENT END ---
+
+Strict Output Rules:
+1.  ONLY the single image.
+2.  Absolutely NO text output. No descriptions, no comments, nothing. Just the pixels.
+3.  Do NOT generate multiple images or variations. One. Image.`
             });
             
             // Add previous frame image if available (for better continuity)
