@@ -1,3 +1,9 @@
+/*
+This CSS file provides styles for the example prompts or templates
+displayed in the web application. It helps in formatting and
+visually presenting these examples to the user, making them
+clearer and more engaging.
+*/
 .examples-container {
     padding: 16px 20px;
     background: rgba(var(--background-secondary-rgb), 0.3);

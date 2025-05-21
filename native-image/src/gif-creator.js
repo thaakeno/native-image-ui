@@ -1,3 +1,14 @@
+/*
+This JavaScript file implements the client-side logic for the GIF creation
+feature. It is responsible for:
+- Dynamically adding "Create GIF" buttons to messages containing multiple images.
+- Providing an interface for users to select images for the GIF.
+- Handling user interactions within the GIF creation tool, such as setting
+  frame delay and repetition.
+- Utilizing the 'gifshot' library to process selected images and encode them
+  into an animated GIF.
+- Offering options to download the generated GIF or add it to the chat input.
+*/
 class GifCreator {
     constructor() {
         // Load the gifshot library dynamically

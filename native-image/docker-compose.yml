@@ -1,3 +1,7 @@
+# This is a Docker Compose file.
+# It defines how to run the web application and any associated services (if any).
+# This file makes it easy to spin up the application in a development environment.
+
 version: '3.8'
 services:
   native-image-app:

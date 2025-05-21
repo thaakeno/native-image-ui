@@ -1,3 +1,9 @@
+// This is the main JavaScript file for the web application.
+// It handles the application's core logic, including:
+// - User interactions (e.g., sending messages, adjusting settings)
+// - Communication with the AI API (e.g., sending requests, handling responses)
+// - Dynamic UI updates (e.g., displaying messages, managing themes)
+
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { marked } from "marked";
 import hljs from "highlight.js";

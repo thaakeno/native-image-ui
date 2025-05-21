@@ -1,3 +1,11 @@
+/*
+This JavaScript file is responsible for managing the example prompts
+feature within the web application. It likely includes logic for:
+- Defining and loading the example prompts.
+- Dynamically creating and displaying the examples in the UI.
+- Handling user interactions with these examples, such as populating
+  the input field when an example is clicked.
+*/
 document.addEventListener('DOMContentLoaded', () => {
     const examplePrompts = [
         {
