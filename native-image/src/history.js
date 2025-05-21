@@ -1,3 +1,13 @@
+/*
+This JavaScript file is responsible for managing the chat history
+feature within the web application. It handles:
+- Storing and retrieving chat conversations using IndexedDB.
+- Displaying the list of past conversations in a dedicated panel.
+- Allowing users to load, rename, delete, favorite, and pin conversations.
+- Calculating and displaying storage usage for chat history.
+- Providing functionality to clear chat history (excluding pinned/favorited items).
+- Synchronizing chat state with the main application logic.
+*/
 class ChatHistory {
     constructor(app) {
         this.app = app;

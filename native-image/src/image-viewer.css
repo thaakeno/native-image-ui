@@ -1,3 +1,11 @@
+/*
+This CSS file provides the styles for the image viewer and gallery
+components within the web application. It ensures that images,
+whether single or in a carousel, are displayed effectively.
+This includes styling for controls related to navigation (next/previous),
+zoom, download, copy, and other user interactions, while maintaining
+a visually consistent and appealing presentation.
+*/
 .image-container {
     margin: 12px 0;
     border-radius: 12px;

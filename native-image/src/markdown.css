@@ -1,3 +1,10 @@
+/*
+This CSS file provides the necessary styles for HTML elements
+that are generated from Markdown content. It ensures that
+formatted text, such as headers, lists, code blocks, blockquotes,
+and other Markdown features, are displayed correctly and
+consistently with the overall design of the web application.
+*/
 :root {
   --code-font: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
   --code-bg: rgba(30, 30, 35, 0.7);
