@@ -1,4 +1,5 @@
-# Simple workflow for deploying static content to GitHub Pages
+# This is a GitHub Actions workflow file.
+# It defines a job to build and deploy the static content of the web application to GitHub Pages.
 name: Deploy static content to Pages
 
 on:
