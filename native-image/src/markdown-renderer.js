@@ -1,3 +1,11 @@
+/*
+This JavaScript file is responsible for rendering Markdown content
+within the web application. It utilizes the Marked.js library
+to convert Markdown-formatted text into HTML, enabling rich text
+formatting for chat messages and other dynamic content areas.
+The MarkdownBuffer class handles incremental rendering and
+enhancements like syntax highlighting for code blocks.
+*/
 class MarkdownBuffer {
     constructor(targetElement) {
         this.buffer = '';

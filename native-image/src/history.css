@@ -1,4 +1,11 @@
-/* Chat History Side Panel */
+/*
+This CSS file is dedicated to styling the chat history section
+of the web application. It defines the visual appearance of
+past conversations, ensuring they are displayed in a readable,
+organized, and visually consistent manner. This includes styles
+for individual chat entries, headers, action buttons, and the
+overall layout of the history panel.
+*/
 .history-panel {
     position: fixed;
     left: 0;

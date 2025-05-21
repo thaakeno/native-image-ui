@@ -1,4 +1,10 @@
-/* GitHub Releases Panel Styling */
+/*
+This CSS file is responsible for styling the section or component
+that displays GitHub release information within the web application.
+It ensures that version details, release notes, and related links
+are presented in a clear, organized, and visually appealing manner,
+integrating seamlessly with the overall application design.
+*/
 .github-releases-panel {
     position: fixed;
     top: 50%;

@@ -1,3 +1,16 @@
+/*
+This JavaScript file provides the core logic for the image viewer
+and gallery functionality within the web application. It is responsible for:
+- Enhancing individual images with actions like zoom, download, and copy.
+- Dynamically creating and managing image carousels for messages
+  containing multiple images, if carousels are enabled.
+- Handling image loading, display, and navigation within carousels
+  (e.g., next/previous slide, thumbnail navigation, swipe gestures).
+- Providing a lightbox feature for viewing images in a larger, focused view.
+- Observing DOM changes to automatically enhance new images and messages.
+- Adapting to UI changes, such as theme or responsive layout adjustments,
+  to ensure consistent image presentation.
+*/
 class ImageViewer {
     constructor() {
         // Add CSS rule to hide images that are likely to be in carousels

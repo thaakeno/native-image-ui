@@ -1,3 +1,16 @@
+/*
+This JavaScript file is responsible for managing the display of GitHub
+release information within the web application. It handles:
+- Fetching release data from the GitHub API for a specified repository.
+- Caching the fetched data to optimize performance and reduce API calls.
+- Processing the release data, including parsing release notes (Markdown),
+  extracting tags, and identifying media like screenshots and GIFs.
+- Dynamically rendering the releases in the UI, including a modal for
+  viewing release details and a gallery for screenshots.
+- Notifying users of new releases and providing update instructions.
+- Managing user interactions, such as filtering releases and copying
+  update commands.
+*/
 class GitHubReleases {
     constructor(options = {}) {
         this.options = {
