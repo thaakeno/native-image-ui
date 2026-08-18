@@ -69,7 +69,8 @@ jobs:
           # constructor fields removed in GenieX 0.4.0 while keeping the app
           # itself at Qualcomm's latest main commit.
           sed -i '/nPast = this.nPast,/d' "$APP/src/main/java/com/geniex/demo/GenerationConfigSample.kt"
-          sed -i '/enable_thinking = enableThinking/d' "$APP/src/main/java/com/geniex/demo/MainActivity.kt"
+          sed -i 's/, enable_thinking = enableThinking//g' "$APP/src/main/java/com/geniex/demo/MainActivity.kt"
+          sed -i '/^[[:space:]]*enable_thinking = enableThinking,[[:space:]]*$/d' "$APP/src/main/java/com/geniex/demo/MainActivity.kt"
           sed -i '/model_name = paths.model_name,/d' "$APP/src/main/java/com/geniex/demo/MainActivity.kt"
 
           grep -q "geniex-android-v0.4.0.aar" "$APP/build.gradle"
