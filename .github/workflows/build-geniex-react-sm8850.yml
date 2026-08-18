@@ -37,6 +37,15 @@ jobs:
       - name: Build local React UI
         working-directory: geniex-react-sm8850/frontend
         run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('src/main.jsx')
+          s = p.read_text()
+          old = '<span><small>vision</small>{formatMs(metrics.mediaMs)}</span>'
+          new = '<span><small>prefill time</small>{formatMs(metrics.promptTimeMs)}</span>'
+          assert old in s, 'Expected v0.4 performance metric markup not found'
+          p.write_text(s.replace(old, new))
+          PY
           npm install --no-audit --no-fund
           npm run build
 
