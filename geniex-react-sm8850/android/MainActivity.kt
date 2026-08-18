@@ -7,7 +7,6 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.view.View
 import android.webkit.JavascriptInterface
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
@@ -28,6 +27,9 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
         window.statusBarColor = 0xFF07090E.toInt()
         window.navigationBarColor = 0xFF07090E.toInt()
+        val layoutParams = window.attributes
+        layoutParams.preferredRefreshRate = 120f
+        window.attributes = layoutParams
 
         GenieXSdk.getInstance().init(this, object : GenieXSdk.InitCallback {
             override fun onSuccess() = Unit
@@ -52,9 +54,6 @@ class MainActivity : Activity() {
                     val url = request?.url?.toString().orEmpty()
                     return !url.startsWith("file:///android_asset/www/")
                 }
-            }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                setFrameRate(120f, View.FRAME_RATE_COMPATIBILITY_DEFAULT)
             }
             loadUrl("file:///android_asset/www/index.html")
         }
