@@ -64,12 +64,25 @@ jobs:
             -o "$APP/libs/geniex-android-v0.4.0.aar"
           test -s "$APP/libs/geniex-android-v0.4.0.aar"
           sed -i "s#implementation 'com.qualcomm.qti:geniex-android:0.3.5'#implementation files('libs/geniex-android-v0.4.0.aar')#" "$APP/build.gradle"
+
+          # ai-hub-apps main currently targets GenieX Android 0.3.5. Adapt the
+          # few constructor fields removed in GenieX 0.4.0 while keeping the
+          # app source itself at the latest main commit.
+          sed -i '/nPast = this.nPast,/d' "$APP/src/main/java/com/geniex/demo/GenerationConfigSample.kt"
+          sed -i 's/, enable_thinking = enableThinking//g' "$APP/src/main/java/com/geniex/demo/MainActivity.kt"
+          sed -i '/model_name = paths.model_name,/d' "$APP/src/main/java/com/geniex/demo/MainActivity.kt"
+
           grep -q "geniex-android-v0.4.0.aar" "$APP/build.gradle"
+          ! grep -q 'nPast = this.nPast' "$APP/src/main/java/com/geniex/demo/GenerationConfigSample.kt"
+          ! grep -q 'enable_thinking = enableThinking' "$APP/src/main/java/com/geniex/demo/MainActivity.kt"
+          ! grep -q 'model_name = paths.model_name' "$APP/src/main/java/com/geniex/demo/MainActivity.kt"
           sha256sum "$APP/libs/geniex-android-v0.4.0.aar" > GENIEX_AAR_SHA256.txt
           printf '%s\n' \
             'GenieX runtime: v0.4.0' \
             'GenieX release commit: c9f8365c623359a5a61885f0783c8f051ba5f471' \
             'Target: Android ARM64 / Snapdragon 8 Elite Gen 5' \
+            'App source: latest qualcomm/ai-hub-apps main at build time' \
+            'Compatibility patch: removed 0.3.5-only constructor fields (nPast, enable_thinking, model_name)' \
             'Build type: debug APK' > BUILD_INFO.txt
 
       - name: Build APK
