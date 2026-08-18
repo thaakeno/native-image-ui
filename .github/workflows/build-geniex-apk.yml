@@ -48,7 +48,8 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          git clone --depth 1 https://github.com/qualcomm/ai-hub-apps.git /tmp/ai-hub-apps
+          git clone --depth 1 --branch main https://github.com/qualcomm/ai-hub-apps.git /tmp/ai-hub-apps
+          test -f /tmp/ai-hub-apps/apps/geniex_chat_android/build.gradle
           git -C /tmp/ai-hub-apps rev-parse HEAD > AI_HUB_APPS_COMMIT.txt
           git -C /tmp/ai-hub-apps log -1 --format='%H%n%cI%n%s' > AI_HUB_APPS_SOURCE.txt
 
