@@ -235,7 +235,7 @@ internal class GenieController(
         flushTokens()
         generating.set(false)
         activity.runOnUiThread { activity.window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) }
-        val p = JSONObject().put("ttftMs",profile.ttftMs).put("mediaMs",profile.mediaMs)
+        val p = JSONObject().put("ttftMs",profile.ttftMs)
             .put("promptTimeMs",profile.promptTimeMs).put("decodeTimeMs",profile.decodeTimeMs)
             .put("promptTokens",profile.promptTokens).put("generatedTokens",profile.generatedTokens)
             .put("prefillSpeed",profile.prefillSpeed).put("decodingSpeed",profile.decodingSpeed).put("stopReason",profile.stopReason)
