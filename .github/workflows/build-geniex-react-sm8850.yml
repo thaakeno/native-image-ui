@@ -92,6 +92,8 @@ jobs:
 
       - name: Install Android SDK and build APK
         working-directory: /tmp/geniex-app
+        env:
+          NON_INTERACTIVE: 'true'
         run: |
           set -euxo pipefail
           bash install_build.sh
