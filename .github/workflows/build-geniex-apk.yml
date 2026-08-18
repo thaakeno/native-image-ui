@@ -66,10 +66,10 @@ jobs:
           sed -i "s#implementation 'com.qualcomm.qti:geniex-android:0.3.5'#implementation files('libs/geniex-android-v0.4.0.aar')#" "$APP/build.gradle"
 
           # ai-hub-apps main currently targets GenieX Android 0.3.5. Adapt the
-          # few constructor fields removed in GenieX 0.4.0 while keeping the
-          # app source itself at the latest main commit.
+          # constructor fields removed in GenieX 0.4.0 while keeping the app
+          # itself at Qualcomm's latest main commit.
           sed -i '/nPast = this.nPast,/d' "$APP/src/main/java/com/geniex/demo/GenerationConfigSample.kt"
-          sed -i 's/, enable_thinking = enableThinking//g' "$APP/src/main/java/com/geniex/demo/MainActivity.kt"
+          sed -i '/enable_thinking = enableThinking/d' "$APP/src/main/java/com/geniex/demo/MainActivity.kt"
           sed -i '/model_name = paths.model_name,/d' "$APP/src/main/java/com/geniex/demo/MainActivity.kt"
 
           grep -q "geniex-android-v0.4.0.aar" "$APP/build.gradle"
