@@ -1,0 +1,139 @@
+name: Build GenieX Vision SM8850
+
+on:
+  push:
+    branches:
+      - geniex-react-sm8850-v2
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout app overlay
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: geniex-react-sm8850/frontend/package.json
+
+      - name: Build local React UI
+        working-directory: geniex-react-sm8850/frontend
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('src/main.jsx')
+          s = p.read_text()
+          old = '<span><small>vision</small>{formatMs(metrics.mediaMs)}</span>'
+          new = '<span><small>prefill time</small>{formatMs(metrics.promptTimeMs)}</span>'
+          assert old in s, 'Expected v0.4 performance metric markup not found'
+          p.write_text(s.replace(old, new))
+          PY
+          npm install --no-audit --no-fund
+          npm run build
+
+      - name: Fetch pinned Qualcomm Android sample
+        run: |
+          git clone --filter=blob:none --no-checkout https://github.com/qualcomm/ai-hub-apps.git /tmp/qai-apps
+          cd /tmp/qai-apps
+          git checkout 93883c4f4cb293fc382415a6202ac27e790969fb -- apps/geniex_chat_android apps/_shared
+          cp -a apps/geniex_chat_android /tmp/geniex-app
+          cp -a apps/_shared /tmp/_shared
+
+      - name: Overlay POCO F8 Ultra app
+        run: |
+          set -euxo pipefail
+          APP=/tmp/geniex-app
+
+          rm -rf "$APP/src/main/java/com/geniex/demo"
+          mkdir -p "$APP/src/main/java/com/geniex/demo"
+          cp geniex-react-sm8850/android/*.kt "$APP/src/main/java/com/geniex/demo/"
+          cp geniex-react-sm8850/android/AndroidManifest.xml "$APP/src/main/AndroidManifest.xml"
+
+          rm -rf "$APP/src/main/assets/www"
+          mkdir -p "$APP/src/main/assets/www"
+          cp -a geniex-react-sm8850/frontend/dist/. "$APP/src/main/assets/www/"
+
+          mkdir -p "$APP/libs"
+          curl --fail --location --retry 3 \
+            https://github.com/qualcomm/GenieX/releases/download/v0.4.0/geniex-android-aar-v0.4.0.aar \
+            -o "$APP/libs/geniex-android-v0.4.0.aar"
+
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('/tmp/geniex-app/build.gradle')
+          s = p.read_text()
+          old = "implementation 'com.qualcomm.qti:geniex-android:0.3.5'"
+          assert old in s, 'Expected GenieX Maven dependency was not found'
+          s = s.replace(old, "implementation files('libs/geniex-android-v0.4.0.aar')")
+          s = s.replace("applicationId 'com.geniex.demo'", "applicationId 'com.thaakeno.geniexvision'")
+          s = s.replace("versionCode 1", "versionCode 2")
+          s = s.replace("versionName '1.0'", "versionName '0.2.0-sm8850'")
+          p.write_text(s)
+          PY
+
+          echo '--- patched GenieX dependency ---'
+          grep -n "geniex-android\|applicationId\|versionName" "$APP/build.gradle"
+          echo '--- React assets ---'
+          find "$APP/src/main/assets/www" -maxdepth 2 -type f -printf '%p %k KB\n'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.1.0'
+
+      - name: Install Android SDK and build APK
+        working-directory: /tmp/geniex-app
+        env:
+          NON_INTERACTIVE: 'true'
+        run: |
+          set -euxo pipefail
+          bash install_build.sh
+          gradle assembleDebug --no-daemon --stacktrace
+
+      - name: Verify and package APK
+        run: |
+          set -euxo pipefail
+          mkdir -p out
+          APK=/tmp/geniex-app/build/outputs/apk/debug/app-debug.apk
+          test -s "$APK"
+          unzip -t "$APK" >/dev/null
+          unzip -l "$APK" | grep -E 'lib/arm64-v8a/(libQnnHtpV81\.so|libgeniex_plugin_qairt\.so)'
+          unzip -l "$APK" | grep -E 'assets/www/(index\.html|assets/)'
+          cp "$APK" out/GenieX-Vision-POCO-F8-Ultra-SM8850-v0.2.apk
+          sha256sum out/GenieX-Vision-POCO-F8-Ultra-SM8850-v0.2.apk | tee out/GenieX-Vision-POCO-F8-Ultra-SM8850-v0.2.apk.sha256
+          cat > out/BUILD_INFO.txt <<'EOF'
+          GenieX Vision POCO F8 Ultra build
+          Device target: POCO F8 Ultra
+          SoC target: Snapdragon 8 Elite Gen 5 / SM8850
+          Preferred backend: QAIRT / Hexagon NPU
+          Preferred VLM: Qwen3-VL-4B-Instruct W4A16
+          Qualcomm ai-hub-apps base: 93883c4f4cb293fc382415a6202ac27e790969fb
+          GenieX Android runtime: v0.4.0 / c9f8365c623359a5a61885f0783c8f051ba5f471
+          UI: bundled local React/Vite
+          EOF
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: GenieX-Vision-POCO-F8-Ultra-SM8850
+          path: out/*
+          if-no-files-found: error
+          retention-days: 14
