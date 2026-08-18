@@ -1,0 +1,119 @@
+name: Temporary GenieX APK build
+
+on:
+  push:
+    branches:
+      - tmp-geniex-apk-build-20260818
+    paths:
+      - .github/workflows/build-geniex-apk.yml
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    steps:
+      - name: Checkout helper branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android packages
+        shell: bash
+        run: |
+          set -euxo pipefail
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager \
+            'platform-tools' \
+            'platforms;android-34' \
+            'build-tools;34.0.0' \
+            'ndk;27.3.13750724'
+
+      - name: Gradle 9.1
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.1.0'
+
+      - name: Fetch latest Qualcomm app source
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git clone --depth 1 https://github.com/qualcomm/ai-hub-apps.git /tmp/ai-hub-apps
+          git -C /tmp/ai-hub-apps rev-parse HEAD > AI_HUB_APPS_COMMIT.txt
+          git -C /tmp/ai-hub-apps log -1 --format='%H%n%cI%n%s' > AI_HUB_APPS_SOURCE.txt
+
+      - name: Inject official GenieX v0.4.0 Android AAR
+        shell: bash
+        run: |
+          set -euxo pipefail
+          APP=/tmp/ai-hub-apps/apps/geniex_chat_android
+          mkdir -p "$APP/libs"
+          curl --retry 3 --retry-delay 2 -fL \
+            'https://github.com/qualcomm/GenieX/releases/download/v0.4.0/geniex-android-aar-v0.4.0.aar' \
+            -o "$APP/libs/geniex-android-v0.4.0.aar"
+          test -s "$APP/libs/geniex-android-v0.4.0.aar"
+          sed -i "s#implementation 'com.qualcomm.qti:geniex-android:0.3.5'#implementation files('libs/geniex-android-v0.4.0.aar')#" "$APP/build.gradle"
+          grep -q "geniex-android-v0.4.0.aar" "$APP/build.gradle"
+          sha256sum "$APP/libs/geniex-android-v0.4.0.aar" > GENIEX_AAR_SHA256.txt
+          printf '%s\n' \
+            'GenieX runtime: v0.4.0' \
+            'GenieX release commit: c9f8365c623359a5a61885f0783c8f051ba5f471' \
+            'Target: Android ARM64 / Snapdragon 8 Elite Gen 5' \
+            'Build type: debug APK' > BUILD_INFO.txt
+
+      - name: Build APK
+        id: build
+        shell: bash
+        run: |
+          set +e
+          cd /tmp/ai-hub-apps/apps/geniex_chat_android
+          gradle assembleDebug --no-daemon --stacktrace 2>&1 | tee "$GITHUB_WORKSPACE/BUILD_LOG.txt"
+          status=${PIPESTATUS[0]}
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Collect result
+        shell: bash
+        run: |
+          set -euxo pipefail
+          status='${{ steps.build.outputs.status }}'
+          APK=/tmp/ai-hub-apps/apps/geniex_chat_android/build/outputs/apk/debug/app-debug.apk
+          if [[ "$status" != '0' || ! -f "$APK" ]]; then
+            echo 'BUILD_FAILED' > BUILD_STATUS.txt
+          else
+            echo 'BUILD_OK' > BUILD_STATUS.txt
+            cp "$APK" GenieX-Chat-v0.4.0-Snapdragon8EliteGen5.apk
+            sha256sum GenieX-Chat-v0.4.0-Snapdragon8EliteGen5.apk > GenieX-Chat-v0.4.0-Snapdragon8EliteGen5.apk.sha256
+            size=$(stat -c%s GenieX-Chat-v0.4.0-Snapdragon8EliteGen5.apk)
+            echo "$size" > APK_SIZE_BYTES.txt
+            if (( size > 95000000 )); then
+              split -b 90000000 -d -a 2 GenieX-Chat-v0.4.0-Snapdragon8EliteGen5.apk GenieX-Chat-v0.4.0-Snapdragon8EliteGen5.apk.part-
+              rm GenieX-Chat-v0.4.0-Snapdragon8EliteGen5.apk
+              echo 'SPLIT' > APK_STORAGE.txt
+            else
+              echo 'WHOLE' > APK_STORAGE.txt
+            fi
+          fi
+
+      - name: Commit build result to temporary branch
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add BUILD_LOG.txt BUILD_STATUS.txt BUILD_INFO.txt AI_HUB_APPS_COMMIT.txt AI_HUB_APPS_SOURCE.txt GENIEX_AAR_SHA256.txt || true
+          git add APK_SIZE_BYTES.txt APK_STORAGE.txt GenieX-Chat-v0.4.0-Snapdragon8EliteGen5.apk* 2>/dev/null || true
+          git commit -m 'Temporary GenieX APK build result'
+          git push origin HEAD:tmp-geniex-apk-build-20260818
