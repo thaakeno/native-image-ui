@@ -44,8 +44,9 @@ jobs:
         run: |
           git clone --filter=blob:none --no-checkout https://github.com/qualcomm/ai-hub-apps.git /tmp/qai-apps
           cd /tmp/qai-apps
-          git checkout 93883c4f4cb293fc382415a6202ac27e790969fb -- apps/geniex_chat_android
+          git checkout 93883c4f4cb293fc382415a6202ac27e790969fb -- apps/geniex_chat_android apps/_shared
           cp -a apps/geniex_chat_android /tmp/geniex-app
+          cp -a apps/_shared /tmp/_shared
 
       - name: Overlay POCO F8 Ultra app
         run: |
